@@ -1,0 +1,33 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyd
+*.pyo
+
+# Django stuff:
+*.log
+*.pot
+*.mo
+*.egg-info/
+.env/
+.venv/
+db.sqlite3
+media/ # User-uploaded files, if not handled by a separate storage system
+static/ # Collectstatic output, if deployed separately from source control
+
+# IDEs and editors
+.idea/ # PyCharm
+.vscode/ # VS Code
+*.sublime-project
+*.sublime-workspace
+
+# Operating System files
+.DS_Store # macOS
+Thumbs.db # Windows
+
+# Virtual environment
+venv/
+env/
+
+# Sensitive data (if not using environment variables)
+local_settings.py
