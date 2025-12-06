@@ -31,3 +31,4 @@ env/
 
 # Sensitive data (if not using environment variables)
 local_settings.py
+/venv/
