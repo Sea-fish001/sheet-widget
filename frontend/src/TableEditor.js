@@ -132,10 +132,6 @@ function TableEditor() {
         afterColumnResize={() => saveTable()}
         afterRowResize={() => saveTable()}
       />
-
-      <div style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-        Подсказка: наведи курсор на границу заголовка столбца или строки — тяни для изменения размера
-      </div>
     </div>
   );
 }
