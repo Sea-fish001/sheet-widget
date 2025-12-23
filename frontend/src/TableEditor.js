@@ -370,16 +370,24 @@ function TableEditor() {
           data={hotData}
           rowHeaders={true}
           colHeaders={true}
+
           height="70vh"
           width="100%"
+
+          rowHeights={48}
+          colWidths={100}
+          stretchH="none"
+          autoColumnSize={false}
+//          stretchH="all"
+//          autoColumnSize={true}
+
           licenseKey="non-commercial-and-evaluation"
           contextMenu={createContextMenu()}
           manualRowResize={true}
           manualColumnResize={true}
           manualRowMove={true}
           manualColumnMove={true}
-          stretchH="all"
-          autoColumnSize={true}
+
           fixedRowsTop={0}
           fixedColumnsStart={1}
           cells={function(row, col) {
