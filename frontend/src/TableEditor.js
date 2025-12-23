@@ -100,16 +100,6 @@ function TableEditor() {
     }
   };
 
-  // Изменить цвет ячейки
-  const changeCellColor = (row, col) => {
-    const currentColor = getCellSettings(row, col).color || '#FFFFFF';
-    const color = prompt('Введите цвет в формате HEX (например, #FF0000):', currentColor);
-    if (color) {
-      updateCellSettings(row, col, { color });
-      setTimeout(() => saveTable(), 100);
-    }
-  };
-
   // Переключить тип ячейки (текст/чекбокс)
   const toggleCellType = (row, col) => {
     const currentType = getCellSettings(row, col).type || 'text';
@@ -169,16 +159,7 @@ function TableEditor() {
           }
         }
       },
-      {
-        key: 'set_color',
-        name: 'Изменить цвет',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          changeCellColor(startRow, startCol);
-        }
-      },
+
       {
         key: 'toggle_checkbox',
         name: 'Переключить чекбокс',
@@ -303,6 +284,51 @@ function TableEditor() {
     toggleCellType(contextMenuCell.row, contextMenuCell.col);
   };
 
+    // функция пересчёта координат
+    const remapCellSettingsAfterMove = (type, movedIndexes, finalIndex) => {
+      const hot = hotRef.current.hotInstance;
+      if (!hot) return;
+
+      const newSettings = {};
+      const indexMapping = {};
+
+      const count =
+        type === 'row'
+          ? hot.countRows()
+          : hot.countCols();
+
+      const remaining = Array.from({ length: count }, (_, i) => i)
+        .filter(i => !movedIndexes.includes(i));
+
+      remaining.splice(finalIndex, 0, ...movedIndexes);
+
+      remaining.forEach((oldIndex, newIndex) => {
+        indexMapping[oldIndex] = newIndex;
+      });
+
+      Object.entries(cellSettings).forEach(([key, value]) => {
+        const [row, col] = key.split(',').map(Number);
+
+        if (type === 'row') {
+          const newRow = indexMapping[row];
+          if (newRow !== undefined) {
+            newSettings[`${newRow},${col}`] = value;
+          }
+        }
+
+        if (type === 'col') {
+          const newCol = indexMapping[col];
+          if (newCol !== undefined) {
+            newSettings[`${row},${newCol}`] = value;
+          }
+        }
+      });
+
+      setCellSettings(newSettings);
+    };
+
+
+
   return (
     <div onClick={(e) => {
       // Закрываем модальное окно при клике вне его
@@ -378,8 +404,6 @@ function TableEditor() {
           colWidths={100}
           stretchH="none"
           autoColumnSize={false}
-//          stretchH="all"
-//          autoColumnSize={true}
 
           licenseKey="non-commercial-and-evaluation"
           contextMenu={createContextMenu()}
@@ -397,6 +421,16 @@ function TableEditor() {
               type: settings.type === 'checkbox' ? 'checkbox' : 'text',
               className: settings.type === 'checkbox' ? 'htCenter htMiddle' : ''
             };
+          }}
+
+          // чтобы цвета ячеек тоже перетаскивались
+          afterRowMove={(movedRows, finalIndex) => {
+            remapCellSettingsAfterMove('row', movedRows, finalIndex);
+            setTimeout(() => saveTable(), 100);
+          }}
+          afterColumnMove={(movedCols, finalIndex) => {
+            remapCellSettingsAfterMove('col', movedCols, finalIndex);
+            setTimeout(() => saveTable(), 100);
           }}
 
           // Обновляем таблицу при изменении данных
