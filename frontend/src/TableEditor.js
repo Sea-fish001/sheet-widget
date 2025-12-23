@@ -20,6 +20,7 @@ function TableEditor({ id, compactMode = false }) {
   useEffect(() => {
     axios.get(`${API_BASE}${id}/`)
       .then(res => {
+        console.log('Table data loaded:', res.data);
         setTitle(res.data.title || 'Без названия');
 
         let rows = [];
@@ -31,6 +32,7 @@ function TableEditor({ id, compactMode = false }) {
 
         setHotData(rows.length > 0 ? rows.map(row => row.map(cell => cell ?? '')) : [['']]);
 
+        // Загружаем настройки ячеек, если есть
         if (res.data.cell_settings && typeof res.data.cell_settings === 'object') {
           setCellSettings(res.data.cell_settings);
         } else {
@@ -75,8 +77,10 @@ function TableEditor({ id, compactMode = false }) {
     const newSettings = { ...cellSettings };
 
     if (settings === null) {
+      // Удалить настройки ячейки
       delete newSettings[key];
     } else {
+      // Обновить настройки ячейки
       newSettings[key] = {
         ...getCellSettings(row, col),
         ...settings
@@ -85,13 +89,38 @@ function TableEditor({ id, compactMode = false }) {
 
     setCellSettings(newSettings);
 
+    // Обновить отображение таблицы
     if (hotRef.current) {
       const hot = hotRef.current.hotInstance;
       hot.render();
     }
   };
 
-  // Расширенное контекстное меню с форматированием
+
+//  // Переключить тип ячейки (текст/чекбокс)
+//  const toggleCellType = (row, col) => {
+//    const currentType = getCellSettings(row, col).type || 'text';
+//    const newType = currentType === 'text' ? 'checkbox' : 'text';
+//
+//    updateCellSettings(row, col, { type: newType });
+//
+//    // Если переключаем на чекбокс, обновляем значение
+//    if (newType === 'checkbox' && hotRef.current) {
+//      const hot = hotRef.current.hotInstance;
+//      const currentValue = hot.getDataAtCell(row, col);
+//      hot.setDataAtCell(row, col, Boolean(currentValue));
+//    }
+//
+//    setTimeout(() => saveTable(), 100);
+//  };
+//
+//  // Сбросить настройки ячейки
+//  const resetCellSettings = (row, col) => {
+//    updateCellSettings(row, col, null);
+//    setTimeout(() => saveTable(), 100);
+//  };
+
+  // Создание контекстного меню
   const createContextMenu = () => {
     return [
       'row_above',
@@ -116,15 +145,18 @@ function TableEditor({ id, compactMode = false }) {
             ...settings
           });
 
+          // Показываем модальное окно
           const modal = document.getElementById('cellSettingsModal');
           if (modal) {
             modal.style.display = 'block';
+            // Позиционируем по центру экрана
             modal.style.left = '50%';
             modal.style.top = '50%';
             modal.style.transform = 'translate(-50%, -50%)';
           }
         }
       },
+
       '---------',
       {
         key: 'bold',
@@ -269,6 +301,7 @@ function TableEditor({ id, compactMode = false }) {
   // Расширенный рендерер с поддержкой форматирования
   const createRenderer = () => {
     return function(instance, td, row, col, prop, value) {
+      // Получаем настройки ячейки
       const settings = getCellSettings(row, col);
 
       // Применяем цвет фона
@@ -310,6 +343,7 @@ function TableEditor({ id, compactMode = false }) {
 
         td.appendChild(checkbox);
       } else {
+        // Для текста используем стандартный рендерер
         Handsontable.renderers.TextRenderer.apply(this, arguments);
       }
 
@@ -317,6 +351,43 @@ function TableEditor({ id, compactMode = false }) {
     };
   };
 
+//  // Добавление строки
+//  const addRow = () => {
+//    if (!hotRef.current) return;
+//    const hot = hotRef.current.hotInstance;
+//    const colCount = hot.countCols();
+//    const newRow = Array(colCount).fill('');
+//    hot.alter('insert_row_below', hot.countRows());
+//    setTimeout(() => saveTable(), 100);
+//  };
+//
+//  // Добавление столбца
+//  const addColumn = () => {
+//    if (!hotRef.current) return;
+//    const hot = hotRef.current.hotInstance;
+//    hot.alter('insert_col_end');
+//    setTimeout(() => saveTable(), 100);
+//  };
+//
+//  // Удаление строки
+//  const removeRow = () => {
+//    if (!hotRef.current) return;
+//    const hot = hotRef.current.hotInstance;
+//    if (hot.countRows() <= 1) return;
+//    hot.alter('remove_row', hot.countRows() - 1);
+//    setTimeout(() => saveTable(), 100);
+//  };
+//
+//  // Удаление столбца
+//  const removeColumn = () => {
+//    if (!hotRef.current) return;
+//    const hot = hotRef.current.hotInstance;
+//    if (hot.countCols() <= 1) return;
+//    hot.alter('remove_col', hot.countCols() - 1);
+//    setTimeout(() => saveTable(), 100);
+//  };
+
+  // Закрыть модальное окно
   const closeModal = () => {
     const modal = document.getElementById('cellSettingsModal');
     if (modal) {
@@ -325,6 +396,68 @@ function TableEditor({ id, compactMode = false }) {
     setContextMenuCell(null);
     saveTable();
   };
+
+//  // Обработчик изменения цвета в модальном окне
+//  const handleColorChange = (e) => {
+//    if (!contextMenuCell) return;
+//    const newColor = e.target.value;
+//    const newSettings = { ...contextMenuCell, color: newColor };
+//    setContextMenuCell(newSettings);
+//    updateCellSettings(contextMenuCell.row, contextMenuCell.col, { color: newColor });
+//  };
+//
+//  // Обработчик изменения типа в модальном окне
+//  const handleTypeChange = (newType) => {
+//    if (!contextMenuCell) return;
+//    const newSettings = { ...contextMenuCell, type: newType };
+//    setContextMenuCell(newSettings);
+//    toggleCellType(contextMenuCell.row, contextMenuCell.col);
+//  };
+
+    // функция пересчёта координат
+    const remapCellSettingsAfterMove = (type, movedIndexes, finalIndex) => {
+      const hot = hotRef.current.hotInstance;
+      if (!hot) return;
+
+      const newSettings = {};
+      const indexMapping = {};
+
+      const count =
+        type === 'row'
+          ? hot.countRows()
+          : hot.countCols();
+
+      const remaining = Array.from({ length: count }, (_, i) => i)
+        .filter(i => !movedIndexes.includes(i));
+
+      remaining.splice(finalIndex, 0, ...movedIndexes);
+
+      remaining.forEach((oldIndex, newIndex) => {
+        indexMapping[oldIndex] = newIndex;
+      });
+
+      Object.entries(cellSettings).forEach(([key, value]) => {
+        const [row, col] = key.split(',').map(Number);
+
+        if (type === 'row') {
+          const newRow = indexMapping[row];
+          if (newRow !== undefined) {
+            newSettings[`${newRow},${col}`] = value;
+          }
+        }
+
+        if (type === 'col') {
+          const newCol = indexMapping[col];
+          if (newCol !== undefined) {
+            newSettings[`${row},${newCol}`] = value;
+          }
+        }
+      });
+
+      setCellSettings(newSettings);
+    };
+
+
 
   return (
     <div>
@@ -348,6 +481,7 @@ function TableEditor({ id, compactMode = false }) {
         </div>
       )}
 
+      {/* Таблица */}
       {tableLoaded && (
         <HotTable
           ref={hotRef}
@@ -356,14 +490,19 @@ function TableEditor({ id, compactMode = false }) {
           colHeaders={true}
           height={compactMode ? "50vh" : "70vh"}
           width="100%"
+
+          rowHeights={48}
+          colWidths={100}
+          stretchH="none"
+          autoColumnSize={false}
+
           licenseKey="non-commercial-and-evaluation"
           contextMenu={createContextMenu()}
           manualRowResize={true}
           manualColumnResize={true}
           manualRowMove={true}
           manualColumnMove={true}
-          stretchH="all"
-          autoColumnSize={true}
+
           fixedRowsTop={0}
           fixedColumnsStart={1}
           cells={function(row, col) {
@@ -374,6 +513,18 @@ function TableEditor({ id, compactMode = false }) {
               className: settings.type === 'checkbox' ? 'htCenter htMiddle' : ''
             };
           }}
+
+          // чтобы цвета ячеек тоже перетаскивались
+          afterRowMove={(movedRows, finalIndex) => {
+            remapCellSettingsAfterMove('row', movedRows, finalIndex);
+            setTimeout(() => saveTable(), 100);
+          }}
+          afterColumnMove={(movedCols, finalIndex) => {
+            remapCellSettingsAfterMove('col', movedCols, finalIndex);
+            setTimeout(() => saveTable(), 100);
+          }}
+
+          // Обновляем таблицу при изменении данных
           afterChange={(changes, source) => {
             if (source === 'edit') {
               saveTable();
@@ -632,8 +783,9 @@ function TableEditor({ id, compactMode = false }) {
                     flex: 1
                   }}
                 >
-                  Сбросить настройки
+                  Сбросить
                 </button>
+
                 <button
                   onClick={closeModal}
                   style={{
@@ -654,6 +806,7 @@ function TableEditor({ id, compactMode = false }) {
         )}
       </div>
 
+      {/* Стили для чекбоксов */}
       <style>{`
         .handsontable .htCheckbox {
           text-align: center;
@@ -676,6 +829,7 @@ function TableEditor({ id, compactMode = false }) {
           outline-offset: -2px;
         }
 
+        /* Стили для контекстного меню */
         .htContextMenu {
           z-index: 999;
         }
