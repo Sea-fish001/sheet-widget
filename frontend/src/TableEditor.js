@@ -123,13 +123,7 @@ function TableEditor({ id, compactMode = false }) {
   // Создание контекстного меню
   const createContextMenu = () => {
     return [
-      'row_above',
-      'row_below',
-      'col_left',
-      'col_right',
-      'remove_row',
-      'remove_col',
-      '---------',
+
       {
         key: 'format_cell',
         name: 'Форматирование ячейки',
@@ -155,135 +149,16 @@ function TableEditor({ id, compactMode = false }) {
             modal.style.transform = 'translate(-50%, -50%)';
           }
         }
-      },
 
-      '---------',
-      {
-        key: 'bold',
-        name: 'Жирный',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          const settings = getCellSettings(startRow, startCol);
-          const newBold = !settings.bold;
-          updateCellSettings(startRow, startCol, { bold: newBold });
-          setTimeout(() => saveTable(), 100);
-        }
-      },
-      {
-        key: 'italic',
-        name: 'Курсив',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          const settings = getCellSettings(startRow, startCol);
-          const newItalic = !settings.italic;
-          updateCellSettings(startRow, startCol, { italic: newItalic });
-          setTimeout(() => saveTable(), 100);
-        }
-      },
-      {
-        key: 'underline',
-        name: 'Подчеркивание',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          const settings = getCellSettings(startRow, startCol);
-          const newUnderline = !settings.underline;
-          updateCellSettings(startRow, startCol, { underline: newUnderline });
-          setTimeout(() => saveTable(), 100);
-        }
       },
       '---------',
-      {
-        key: 'align_left',
-        name: 'Выравнивание по левому краю',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          updateCellSettings(startRow, startCol, { align: 'left' });
-          setTimeout(() => saveTable(), 100);
-        }
-      },
-      {
-        key: 'align_center',
-        name: 'Выравнивание по центру',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          updateCellSettings(startRow, startCol, { align: 'center' });
-          setTimeout(() => saveTable(), 100);
-        }
-      },
-      {
-        key: 'align_right',
-        name: 'Выравнивание по правому краю',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          updateCellSettings(startRow, startCol, { align: 'right' });
-          setTimeout(() => saveTable(), 100);
-        }
-      },
+      'row_above',
+      'row_below',
+      'col_left',
+      'col_right',
+      'remove_row',
+      'remove_col',
       '---------',
-      {
-        key: 'font_color',
-        name: 'Цвет текста',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          const currentColor = getCellSettings(startRow, startCol).fontColor || '#000000';
-          const color = prompt('Введите цвет текста в формате HEX (например, #FF0000):', currentColor);
-          if (color) {
-            updateCellSettings(startRow, startCol, { fontColor: color });
-            setTimeout(() => saveTable(), 100);
-          }
-        }
-      },
-      {
-        key: 'cell_color',
-        name: 'Цвет фона',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          const currentColor = getCellSettings(startRow, startCol).color || '#FFFFFF';
-          const color = prompt('Введите цвет фона в формате HEX (например, #FFFF00):', currentColor);
-          if (color) {
-            updateCellSettings(startRow, startCol, { color });
-            setTimeout(() => saveTable(), 100);
-          }
-        }
-      },
-      '---------',
-      {
-        key: 'toggle_checkbox',
-        name: 'Переключить чекбокс',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          const currentType = getCellSettings(startRow, startCol).type || 'text';
-          const newType = currentType === 'text' ? 'checkbox' : 'text';
-
-          updateCellSettings(startRow, startCol, { type: newType });
-
-          if (newType === 'checkbox' && hotRef.current) {
-            const hot = hotRef.current.hotInstance;
-            const currentValue = hot.getDataAtCell(startRow, startCol);
-            hot.setDataAtCell(startRow, startCol, Boolean(currentValue));
-          }
-
-          setTimeout(() => saveTable(), 100);
-        }
-      },
       {
         key: 'reset_cell',
         name: 'Сбросить настройки',
