@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { HotTable } from '@handsontable/react';
-import Handsontable from 'handsontable';
 import { registerAllModules } from 'handsontable/registry';
 import axios from 'axios';
+import Papa from 'papaparse';
+import * as XLSX from 'xlsx';
+import { textRenderer } from 'handsontable/renderers/textRenderer';
 
 registerAllModules();
 
@@ -10,41 +12,40 @@ const API_BASE = 'http://localhost:8000/api/tables/';
 
 function TableEditor({ id, compactMode = false }) {
   const hotRef = useRef(null);
+  const fileInputRef = useRef(null);
+
   const [contextMenuCell, setContextMenuCell] = useState(null);
   const [cellSettings, setCellSettings] = useState({});
   const [title, setTitle] = useState('');
   const [hotData, setHotData] = useState([['']]);
   const [tableLoaded, setTableLoaded] = useState(false);
 
-  // Загрузка данных
+  // Загрузка таблицы
   useEffect(() => {
-    axios.get(`${API_BASE}${id}/`)
-      .then(res => {
-        console.log('Table data loaded:', res.data);
-        setTitle(res.data.title || 'Без названия');
+    if (id) {
+      axios.get(`${API_BASE}${id}/`)
+        .then(res => {
+          setTitle(res.data.title || 'Без названия');
 
-        let rows = [];
-        if (Array.isArray(res.data.data)) {
-          rows = res.data.data;
-        } else if (res.data.data && Array.isArray(res.data.data.rows)) {
-          rows = res.data.data.rows;
-        }
+          let rows = [];
+          if (Array.isArray(res.data.data)) {
+            rows = res.data.data;
+          } else if (res.data.data && Array.isArray(res.data.data.rows)) {
+            rows = res.data.data.rows;
+          }
 
-        setHotData(rows.length > 0 ? rows.map(row => row.map(cell => cell ?? '')) : [['']]);
-
-        // Загружаем настройки ячеек, если есть
-        if (res.data.cell_settings && typeof res.data.cell_settings === 'object') {
-          setCellSettings(res.data.cell_settings);
-        } else {
-          setCellSettings({});
-        }
-
-        setTableLoaded(true);
-      })
-      .catch(err => {
-        console.error('Error loading table:', err);
-        alert('Ошибка загрузки таблицы');
-      });
+          setHotData(rows.length > 0 ? rows.map(row => row.map(cell => cell ?? '')) : [['']]);
+          setCellSettings(res.data.cell_settings || {});
+          setTableLoaded(true);
+        })
+        .catch(err => {
+          console.error('Ошибка загрузки таблицы:', err);
+          alert('Не удалось загрузить таблицу');
+        });
+    } else {
+      setTitle('Новая таблица');
+      setTableLoaded(true);
+    }
   }, [id]);
 
   // Сохранение таблицы
@@ -53,153 +54,240 @@ function TableEditor({ id, compactMode = false }) {
     const hot = hotRef.current.hotInstance;
     const currentData = hot.getData();
 
-    axios.patch(`${API_BASE}${id}/`, {
+    const payload = {
       title,
       data: { rows: currentData },
       cell_settings: cellSettings
-    }).then(() => {
-      console.log('Table saved successfully');
-    }).catch((error) => {
-      console.error('Save error:', error);
-      alert('Ошибка сохранения');
-    });
+    };
+
+    if (id) {
+      axios.patch(`${API_BASE}${id}/`, payload)
+        .then(() => console.log('Таблица сохранена'))
+        .catch(err => {
+          console.error('Ошибка сохранения:', err);
+          alert('Ошибка при сохранении');
+        });
+    } else {
+      axios.post(`${API_BASE}`, payload)
+        .then(res => {
+          window.location.href = `/table/${res.data.id}`;
+        })
+        .catch(err => {
+          console.error('Ошибка создания:', err);
+          alert('Ошибка при создании таблицы');
+        });
+    }
   };
 
-  // Получить настройки ячейки
+  // Импорт файла
+  const handleImport = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const content = e.target.result;
+
+      if (file.name.endsWith('.csv')) {
+        Papa.parse(content, {
+          complete: (result) => {
+            const rows = result.data.map(row => row.map(cell => cell ?? ''));
+            setHotData(rows);
+            hotRef.current.hotInstance.loadData(rows);
+            setCellSettings({});
+            alert('Таблица успешно импортирована из CSV');
+          },
+          skipEmptyLines: true,
+        });
+      } else if (file.name.endsWith('.json')) {
+        try {
+          const json = JSON.parse(content);
+          let rows = [];
+          if (Array.isArray(json)) rows = json;
+          else if (json.rows) rows = json.rows;
+          else if (json.data?.rows) rows = json.data.rows;
+
+          const normalized = rows.map(row => row.map(cell => cell ?? ''));
+          setHotData(normalized);
+          hotRef.current.hotInstance.loadData(normalized);
+          setCellSettings(json.cell_settings || {});
+          setTitle(json.title || 'Импортированная таблица');
+          alert('Таблица успешно импортирована из JSON');
+        } catch (err) {
+          alert('Ошибка чтения JSON-файла');
+        }
+      } else {
+        alert('Поддерживаются только файлы .csv и .json');
+      }
+    };
+
+    reader.readAsText(file);
+    event.target.value = '';
+  };
+
+  // Экспорт в CSV
+  const exportToCSV = () => {
+    if (!hotRef.current) return;
+    const data = hotRef.current.hotInstance.getData();
+    const csv = data.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title || 'table'}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Экспорт в JSON (с настройками)
+  const exportToJSON = () => {
+    if (!hotRef.current) return;
+    const data = hotRef.current.hotInstance.getData();
+    const json = {
+      title,
+      data: { rows: data },
+      cell_settings: cellSettings
+    };
+    const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title || 'table'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Экспорт в Excel (.xlsx) с форматированием
+  const exportToExcel = () => {
+    if (!hotRef.current) return;
+    const hot = hotRef.current.hotInstance;
+    const data = hot.getData();
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    for (let r = range.s.r; r <= range.e.r; r++) {
+      for (let c = range.s.c; c <= range.e.c; c++) {
+        const cellAddr = XLSX.utils.encode_cell({ r, c });
+        const settings = getCellSettings(r, c);
+
+        if (!ws[cellAddr]) ws[cellAddr] = { v: data[r][c] || '' };
+        ws[cellAddr].s = ws[cellAddr].s || {};
+
+        if (settings.color && settings.color !== '#FFFFFF') {
+          ws[cellAddr].s.fill = { fgColor: { rgb: settings.color.slice(1) } };
+        }
+        if (settings.fontColor && settings.fontColor !== '#000000') {
+          ws[cellAddr].s.font = ws[cellAddr].s.font || {};
+          ws[cellAddr].s.font.color = { rgb: settings.fontColor.slice(1) };
+        }
+        if (settings.bold) {
+          ws[cellAddr].s.font = ws[cellAddr].s.font || {};
+          ws[cellAddr].s.font.bold = true;
+        }
+        if (settings.italic) {
+          ws[cellAddr].s.font = ws[cellAddr].s.font || {};
+          ws[cellAddr].s.font.italic = true;
+        }
+        if (settings.underline) {
+          ws[cellAddr].s.font = ws[cellAddr].s.font || {};
+          ws[cellAddr].s.font.underline = true;
+        }
+        if (settings.align) {
+          ws[cellAddr].s.alignment = { horizontal: settings.align };
+        }
+        if (settings.type === 'checkbox') {
+          ws[cellAddr].t = 'b';
+          ws[cellAddr].v = Boolean(data[r][c]);
+        }
+      }
+    }
+
+    ws['!cols'] = data[0]?.map(() => ({ wch: 15 }));
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Лист1');
+    XLSX.writeFile(wb, `${title || 'table'}.xlsx`);
+  };
+
+  // Настройки ячейки
   const getCellSettings = (row, col) => {
     const key = `${row},${col}`;
     return cellSettings[key] || { color: '#FFFFFF', type: 'text' };
   };
 
-  // Обновить настройки ячейки
   const updateCellSettings = (row, col, settings) => {
     const key = `${row},${col}`;
     const newSettings = { ...cellSettings };
 
     if (settings === null) {
-      // Удалить настройки ячейки
       delete newSettings[key];
     } else {
-      // Обновить настройки ячейки
-      newSettings[key] = {
-        ...getCellSettings(row, col),
-        ...settings
-      };
+      newSettings[key] = { ...getCellSettings(row, col), ...settings };
     }
 
     setCellSettings(newSettings);
-
-    // Обновить отображение таблицы
-    if (hotRef.current) {
-      const hot = hotRef.current.hotInstance;
-      hot.render();
-    }
+    hotRef.current?.hotInstance.render();
   };
 
+  // Контекстное меню на русском
+    const createContextMenu = () => ({
+      items: {
+        'row_above': { name: 'Вставить строку сверху' },
+        'row_below': { name: 'Вставить строку снизу' },
+        'col_left': { name: 'Вставить столбец слева' },
+        'col_right': { name: 'Вставить столбец справа' },
+        '---------': { disabled: true },
+        'remove_row': { name: 'Удалить строку' },
+        'remove_col': { name: 'Удалить столбец' },
+        'format_cell': {
+          name: 'Форматирование ячейки',
+          callback: (key, selection) => {
+            if (!selection || selection.length === 0) return;
+            const start = selection[0].start;
+            const settings = getCellSettings(start.row, start.col);
+            setContextMenuCell({ row: start.row, col: start.col, ...settings });
 
-//  // Переключить тип ячейки (текст/чекбокс)
-//  const toggleCellType = (row, col) => {
-//    const currentType = getCellSettings(row, col).type || 'text';
-//    const newType = currentType === 'text' ? 'checkbox' : 'text';
-//
-//    updateCellSettings(row, col, { type: newType });
-//
-//    // Если переключаем на чекбокс, обновляем значение
-//    if (newType === 'checkbox' && hotRef.current) {
-//      const hot = hotRef.current.hotInstance;
-//      const currentValue = hot.getDataAtCell(row, col);
-//      hot.setDataAtCell(row, col, Boolean(currentValue));
-//    }
-//
-//    setTimeout(() => saveTable(), 100);
-//  };
-//
-//  // Сбросить настройки ячейки
-//  const resetCellSettings = (row, col) => {
-//    updateCellSettings(row, col, null);
-//    setTimeout(() => saveTable(), 100);
-//  };
-
-  // Создание контекстного меню
-  const createContextMenu = () => {
-    return [
-
-      {
-        key: 'format_cell',
-        name: 'Форматирование ячейки',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-
-          const settings = getCellSettings(startRow, startCol);
-          setContextMenuCell({
-            row: startRow,
-            col: startCol,
-            ...settings
-          });
-
-          // Показываем модальное окно
-          const modal = document.getElementById('cellSettingsModal');
-          if (modal) {
-            modal.style.display = 'block';
-            // Позиционируем по центру экрана
-            modal.style.left = '50%';
-            modal.style.top = '50%';
-            modal.style.transform = 'translate(-50%, -50%)';
+            const modal = document.getElementById('cellSettingsModal');
+            if (modal) {
+              modal.style.display = 'block';
+              modal.style.left = '50%';
+              modal.style.top = '50%';
+              modal.style.transform = 'translate(-50%, -50%)';
+            }
+          }
+        },
+        'reset_cell': {
+          name: 'Сбросить настройки ячейки',
+          callback: (key, selection) => {
+            if (!selection || selection.length === 0) return;
+            selection.forEach(sel => {
+              const { start, end } = sel;
+              for (let r = start.row; r <= end.row; r++) {
+                for (let c = start.col; c <= end.col; c++) {
+                  updateCellSettings(r, c, null);
+                }
+              }
+            });
+            saveTable();
           }
         }
-
-      },
-      '---------',
-      'row_above',
-      'row_below',
-      'col_left',
-      'col_right',
-      'remove_row',
-      'remove_col',
-      '---------',
-      {
-        key: 'reset_cell',
-        name: 'Сбросить настройки',
-        callback: (key, selection) => {
-          if (!selection || selection.length === 0) return;
-          const startRow = selection[0].start.row;
-          const startCol = selection[0].start.col;
-          updateCellSettings(startRow, startCol, null);
-          setTimeout(() => saveTable(), 100);
-        }
       }
-    ];
-  };
+    });
 
-  // Расширенный рендерер с поддержкой форматирования
-  const createRenderer = () => {
-    return function(instance, td, row, col, prop, value) {
-      // Получаем настройки ячейки
+  // Рендерер с форматированием
+    const createRenderer = () => (instance, td, row, col, prop, value, cellProperties) => {
       const settings = getCellSettings(row, col);
 
-      // Применяем цвет фона
-      if (settings.color && settings.color !== '#FFFFFF') {
-        td.style.backgroundColor = settings.color;
-      }
-
-      // Применяем цвет текста
-      if (settings.fontColor && settings.fontColor !== '#000000') {
-        td.style.color = settings.fontColor;
-      }
-
-      // Применяем форматирование текста
+      // Применяем стили
+      if (settings.color && settings.color !== '#FFFFFF') td.style.backgroundColor = settings.color;
+      if (settings.fontColor && settings.fontColor !== '#000000') td.style.color = settings.fontColor;
       if (settings.bold) td.style.fontWeight = 'bold';
       if (settings.italic) td.style.fontStyle = 'italic';
       if (settings.underline) td.style.textDecoration = 'underline';
+      if (settings.align) td.style.textAlign = settings.align;
 
-      // Применяем выравнивание
-      if (settings.align) {
-        td.style.textAlign = settings.align;
-      }
-
-      // Для чекбоксов
       if (settings.type === 'checkbox') {
         td.innerHTML = '';
         td.style.textAlign = 'center';
@@ -208,131 +296,50 @@ function TableEditor({ id, compactMode = false }) {
         const checkbox = document.createElement('input');
         checkbox.type = 'checkbox';
         checkbox.checked = Boolean(value);
-        checkbox.style.margin = '0';
         checkbox.style.cursor = 'pointer';
-
         checkbox.addEventListener('change', (e) => {
           instance.setDataAtCell(row, col, e.target.checked);
           saveTable();
         });
-
         td.appendChild(checkbox);
       } else {
-        // Для текста используем стандартный рендерер
-        Handsontable.renderers.TextRenderer.apply(this, arguments);
+        // Правильный вызов базового текст-рендерера (важно для ARIA!)
+        textRenderer(instance, td, row, col, prop, value, cellProperties);
       }
 
       return td;
     };
-  };
 
-//  // Добавление строки
-//  const addRow = () => {
-//    if (!hotRef.current) return;
-//    const hot = hotRef.current.hotInstance;
-//    const colCount = hot.countCols();
-//    const newRow = Array(colCount).fill('');
-//    hot.alter('insert_row_below', hot.countRows());
-//    setTimeout(() => saveTable(), 100);
-//  };
-//
-//  // Добавление столбца
-//  const addColumn = () => {
-//    if (!hotRef.current) return;
-//    const hot = hotRef.current.hotInstance;
-//    hot.alter('insert_col_end');
-//    setTimeout(() => saveTable(), 100);
-//  };
-//
-//  // Удаление строки
-//  const removeRow = () => {
-//    if (!hotRef.current) return;
-//    const hot = hotRef.current.hotInstance;
-//    if (hot.countRows() <= 1) return;
-//    hot.alter('remove_row', hot.countRows() - 1);
-//    setTimeout(() => saveTable(), 100);
-//  };
-//
-//  // Удаление столбца
-//  const removeColumn = () => {
-//    if (!hotRef.current) return;
-//    const hot = hotRef.current.hotInstance;
-//    if (hot.countCols() <= 1) return;
-//    hot.alter('remove_col', hot.countCols() - 1);
-//    setTimeout(() => saveTable(), 100);
-//  };
-
-  // Закрыть модальное окно
   const closeModal = () => {
-    const modal = document.getElementById('cellSettingsModal');
-    if (modal) {
-      modal.style.display = 'none';
-    }
+    document.getElementById('cellSettingsModal').style.display = 'none';
     setContextMenuCell(null);
     saveTable();
   };
 
-//  // Обработчик изменения цвета в модальном окне
-//  const handleColorChange = (e) => {
-//    if (!contextMenuCell) return;
-//    const newColor = e.target.value;
-//    const newSettings = { ...contextMenuCell, color: newColor };
-//    setContextMenuCell(newSettings);
-//    updateCellSettings(contextMenuCell.row, contextMenuCell.col, { color: newColor });
-//  };
-//
-//  // Обработчик изменения типа в модальном окне
-//  const handleTypeChange = (newType) => {
-//    if (!contextMenuCell) return;
-//    const newSettings = { ...contextMenuCell, type: newType };
-//    setContextMenuCell(newSettings);
-//    toggleCellType(contextMenuCell.row, contextMenuCell.col);
-//  };
+  // Перемещение строк/столбцов с переносом настроек
+  const remapCellSettingsAfterMove = (type, movedIndexes, finalIndex) => {
+    const hot = hotRef.current?.hotInstance;
+    if (!hot) return;
 
-    // функция пересчёта координат
-    const remapCellSettingsAfterMove = (type, movedIndexes, finalIndex) => {
-      const hot = hotRef.current.hotInstance;
-      if (!hot) return;
+    const count = type === 'row' ? hot.countRows() : hot.countCols();
+    const remaining = Array.from({ length: count }, (_, i) => i).filter(i => !movedIndexes.includes(i));
+    remaining.splice(finalIndex, 0, ...movedIndexes);
 
-      const newSettings = {};
-      const indexMapping = {};
+    const mapping = {};
+    remaining.forEach((oldIdx, newIdx) => { mapping[oldIdx] = newIdx; });
 
-      const count =
-        type === 'row'
-          ? hot.countRows()
-          : hot.countCols();
+    const newSettings = {};
+    Object.entries(cellSettings).forEach(([key, val]) => {
+      const [r, c] = key.split(',').map(Number);
+      const newRow = type === 'row' ? mapping[r] : r;
+      const newCol = type === 'col' ? mapping[c] : c;
+      if (newRow !== undefined && newCol !== undefined) {
+        newSettings[`${newRow},${newCol}`] = val;
+      }
+    });
 
-      const remaining = Array.from({ length: count }, (_, i) => i)
-        .filter(i => !movedIndexes.includes(i));
-
-      remaining.splice(finalIndex, 0, ...movedIndexes);
-
-      remaining.forEach((oldIndex, newIndex) => {
-        indexMapping[oldIndex] = newIndex;
-      });
-
-      Object.entries(cellSettings).forEach(([key, value]) => {
-        const [row, col] = key.split(',').map(Number);
-
-        if (type === 'row') {
-          const newRow = indexMapping[row];
-          if (newRow !== undefined) {
-            newSettings[`${newRow},${col}`] = value;
-          }
-        }
-
-        if (type === 'col') {
-          const newCol = indexMapping[col];
-          if (newCol !== undefined) {
-            newSettings[`${row},${newCol}`] = value;
-          }
-        }
-      });
-
-      setCellSettings(newSettings);
-    };
-
-
+    setCellSettings(newSettings);
+  };
 
   return (
     <div>
@@ -344,19 +351,34 @@ function TableEditor({ id, compactMode = false }) {
             style={{ fontSize: '20px', padding: '8px', width: '350px' }}
             placeholder="Название таблицы"
           />
-
-          <button onClick={saveTable} style={{ padding: '10px 20px', fontWeight: 'bold', background: '#007bff', color: 'white' }}>
+          <button onClick={saveTable} style={{ padding: '10px 20px', background: '#007bff', color: 'white', fontWeight: 'bold' }}>
             Сохранить
           </button>
 
-          <button onClick={() => window.open(`${API_BASE}${id}/export_csv/`)}>Экспорт CSV</button>
-          <button onClick={() => window.open(`${API_BASE}${id}/export_json/`)} style={{ marginLeft: '10px' }}>
+          <button onClick={() => fileInputRef.current.click()} style={{ padding: '10px 20px', background: '#28a745', color: 'white' }}>
+            Импорт (CSV/JSON)
+          </button>
+
+          <button onClick={exportToCSV} style={{ padding: '10px 20px', background: '#ffc107', color: 'black' }}>
+            Экспорт CSV
+          </button>
+          <button onClick={exportToJSON} style={{ padding: '10px 20px', background: '#ffc107', color: 'black' }}>
             Экспорт JSON
+          </button>
+          <button onClick={exportToExcel} style={{ padding: '10px 20px', background: '#fd7e14', color: 'white', fontWeight: 'bold' }}>
+            Экспорт Excel (.xlsx)
           </button>
         </div>
       )}
 
-      {/* Таблица */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleImport}
+        accept=".csv,.json"
+        style={{ display: 'none' }}
+      />
+
       {tableLoaded && (
         <HotTable
           ref={hotRef}
@@ -365,22 +387,17 @@ function TableEditor({ id, compactMode = false }) {
           colHeaders={true}
           height={compactMode ? "50vh" : "70vh"}
           width="100%"
-
           rowHeights={48}
           colWidths={100}
           stretchH="none"
-          autoColumnSize={false}
-
           licenseKey="non-commercial-and-evaluation"
           contextMenu={createContextMenu()}
           manualRowResize={true}
           manualColumnResize={true}
           manualRowMove={true}
           manualColumnMove={true}
-
-          fixedRowsTop={0}
           fixedColumnsStart={1}
-          cells={function(row, col) {
+          cells={(row, col) => {
             const settings = getCellSettings(row, col);
             return {
               renderer: createRenderer(),
@@ -388,352 +405,100 @@ function TableEditor({ id, compactMode = false }) {
               className: settings.type === 'checkbox' ? 'htCenter htMiddle' : ''
             };
           }}
-
-          // чтобы цвета ячеек тоже перетаскивались
-          afterRowMove={(movedRows, finalIndex) => {
-            remapCellSettingsAfterMove('row', movedRows, finalIndex);
-            setTimeout(() => saveTable(), 100);
-          }}
-          afterColumnMove={(movedCols, finalIndex) => {
-            remapCellSettingsAfterMove('col', movedCols, finalIndex);
-            setTimeout(() => saveTable(), 100);
-          }}
-
-          // Обновляем таблицу при изменении данных
-          afterChange={(changes, source) => {
-            if (source === 'edit') {
-              saveTable();
-            }
-          }}
+          afterRowMove={(moved, final) => { remapCellSettingsAfterMove('row', moved, final); setTimeout(saveTable, 100); }}
+          afterColumnMove={(moved, final) => { remapCellSettingsAfterMove('col', moved, final); setTimeout(saveTable, 100); }}
+          afterChange={(changes, source) => source === 'edit' && saveTable()}
         />
       )}
 
-      {/* Модальное окно настроек ячейки */}
-      <div
-        id="cellSettingsModal"
-        style={{
-          display: 'none',
-          position: 'fixed',
-          zIndex: 1000,
-          backgroundColor: 'white',
-          border: '1px solid #ccc',
-          borderRadius: '8px',
-          padding: '20px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          minWidth: '400px',
-          maxWidth: '500px'
-        }}
-      >
+      {/* Модальное окно форматирования */}
+      <div id="cellSettingsModal" style={{
+        display: 'none', position: 'fixed', zIndex: 1000, background: 'white',
+        border: '1px solid #ccc', borderRadius: '8px', padding: '20px',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.15)', minWidth: '400px', maxWidth: '500px'
+      }}>
         {contextMenuCell && (
           <>
             <h4 style={{ marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '10px' }}>
               Форматирование ячейки [{contextMenuCell.row + 1}, {contextMenuCell.col + 1}]
-              <button
-                onClick={closeModal}
-                style={{
-                  float: 'right',
-                  padding: '2px 8px',
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '20px',
-                  cursor: 'pointer',
-                  color: '#666'
-                }}
-              >
-                ×
-              </button>
+              <button onClick={closeModal} style={{ float: 'right', background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>×</button>
             </h4>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Цвет фона:</label>
-                <input
-                  type="color"
-                  value={contextMenuCell.color || '#FFFFFF'}
-                  onChange={(e) => {
-                    const newSettings = { ...contextMenuCell, color: e.target.value };
-                    setContextMenuCell(newSettings);
+                <input type="color" value={contextMenuCell.color || '#FFFFFF'}
+                  onChange={e => {
+                    const upd = { ...contextMenuCell, color: e.target.value };
+                    setContextMenuCell(upd);
                     updateCellSettings(contextMenuCell.row, contextMenuCell.col, { color: e.target.value });
                   }}
-                  style={{ width: '100%', height: '40px', cursor: 'pointer', border: '1px solid #ccc' }}
+                  style={{ width: '100%', height: '40px', cursor: 'pointer' }}
                 />
               </div>
-
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Цвет текста:</label>
-                <input
-                  type="color"
-                  value={contextMenuCell.fontColor || '#000000'}
-                  onChange={(e) => {
-                    const newSettings = { ...contextMenuCell, fontColor: e.target.value };
-                    setContextMenuCell(newSettings);
+                <input type="color" value={contextMenuCell.fontColor || '#000000'}
+                  onChange={e => {
+                    const upd = { ...contextMenuCell, fontColor: e.target.value };
+                    setContextMenuCell(upd);
                     updateCellSettings(contextMenuCell.row, contextMenuCell.col, { fontColor: e.target.value });
                   }}
-                  style={{ width: '100%', height: '40px', cursor: 'pointer', border: '1px solid #ccc' }}
+                  style={{ width: '100%', height: '40px', cursor: 'pointer' }}
                 />
               </div>
             </div>
 
             <div style={{ marginTop: '15px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Формат текста:</label>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <button
-                  onClick={() => {
-                    const newBold = !contextMenuCell.bold;
-                    const newSettings = { ...contextMenuCell, bold: newBold };
-                    setContextMenuCell(newSettings);
-                    updateCellSettings(contextMenuCell.row, contextMenuCell.col, { bold: newBold });
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    background: contextMenuCell.bold ? '#007bff' : '#e9ecef',
-                    color: contextMenuCell.bold ? 'white' : '#495057',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontWeight: 'bold'
-                  }}
-                >
-                  B
-                </button>
-                <button
-                  onClick={() => {
-                    const newItalic = !contextMenuCell.italic;
-                    const newSettings = { ...contextMenuCell, italic: newItalic };
-                    setContextMenuCell(newSettings);
-                    updateCellSettings(contextMenuCell.row, contextMenuCell.col, { italic: newItalic });
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    background: contextMenuCell.italic ? '#007bff' : '#e9ecef',
-                    color: contextMenuCell.italic ? 'white' : '#495057',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontStyle: 'italic'
-                  }}
-                >
-                  I
-                </button>
-                <button
-                  onClick={() => {
-                    const newUnderline = !contextMenuCell.underline;
-                    const newSettings = { ...contextMenuCell, underline: newUnderline };
-                    setContextMenuCell(newSettings);
-                    updateCellSettings(contextMenuCell.row, contextMenuCell.col, { underline: newUnderline });
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    background: contextMenuCell.underline ? '#007bff' : '#e9ecef',
-                    color: contextMenuCell.underline ? 'white' : '#495057',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    textDecoration: 'underline'
-                  }}
-                >
-                  U
-                </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => { const b = !contextMenuCell.bold; setContextMenuCell({...contextMenuCell, bold: b}); updateCellSettings(contextMenuCell.row, contextMenuCell.col, { bold: b }); }}
+                  style={{ padding: '8px 12px', background: contextMenuCell.bold ? '#007bff' : '#e9ecef', color: contextMenuCell.bold ? 'white' : '#495057', border: 'none', borderRadius: '4px', fontWeight: 'bold' }}>B</button>
+                <button onClick={() => { const i = !contextMenuCell.italic; setContextMenuCell({...contextMenuCell, italic: i}); updateCellSettings(contextMenuCell.row, contextMenuCell.col, { italic: i }); }}
+                  style={{ padding: '8px 12px', background: contextMenuCell.italic ? '#007bff' : '#e9ecef', color: contextMenuCell.italic ? 'white' : '#495057', border: 'none', borderRadius: '4px', fontStyle: 'italic' }}>I</button>
+                <button onClick={() => { const u = !contextMenuCell.underline; setContextMenuCell({...contextMenuCell, underline: u}); updateCellSettings(contextMenuCell.row, contextMenuCell.col, { underline: u }); }}
+                  style={{ padding: '8px 12px', background: contextMenuCell.underline ? '#007bff' : '#e9ecef', color: contextMenuCell.underline ? 'white' : '#495057', border: 'none', borderRadius: '4px', textDecoration: 'underline' }}>U</button>
               </div>
             </div>
 
             <div style={{ marginTop: '15px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Выравнивание:</label>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={() => {
-                    const newSettings = { ...contextMenuCell, align: 'left' };
-                    setContextMenuCell(newSettings);
-                    updateCellSettings(contextMenuCell.row, contextMenuCell.col, { align: 'left' });
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    background: contextMenuCell.align === 'left' ? '#007bff' : '#e9ecef',
-                    color: contextMenuCell.align === 'left' ? 'white' : '#495057',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    flex: 1
-                  }}
-                >
-                  ←
-                </button>
-                <button
-                  onClick={() => {
-                    const newSettings = { ...contextMenuCell, align: 'center' };
-                    setContextMenuCell(newSettings);
-                    updateCellSettings(contextMenuCell.row, contextMenuCell.col, { align: 'center' });
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    background: contextMenuCell.align === 'center' ? '#007bff' : '#e9ecef',
-                    color: contextMenuCell.align === 'center' ? 'white' : '#495057',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    flex: 1
-                  }}
-                >
-                  ↔
-                </button>
-                <button
-                  onClick={() => {
-                    const newSettings = { ...contextMenuCell, align: 'right' };
-                    setContextMenuCell(newSettings);
-                    updateCellSettings(contextMenuCell.row, contextMenuCell.col, { align: 'right' });
-                  }}
-                  style={{
-                    padding: '8px 12px',
-                    background: contextMenuCell.align === 'right' ? '#007bff' : '#e9ecef',
-                    color: contextMenuCell.align === 'right' ? 'white' : '#495057',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    flex: 1
-                  }}
-                >
-                  →
-                </button>
+                {['left', 'center', 'right'].map(align => (
+                  <button key={align} onClick={() => { setContextMenuCell({...contextMenuCell, align}); updateCellSettings(contextMenuCell.row, contextMenuCell.col, { align }); }}
+                    style={{ flex: 1, padding: '8px', background: contextMenuCell.align === align ? '#007bff' : '#e9ecef', color: contextMenuCell.align === align ? 'white' : '#495057', border: 'none', borderRadius: '4px' }}>
+                    {align === 'left' ? '←' : align === 'center' ? '↔' : '→'}
+                  </button>
+                ))}
               </div>
             </div>
 
             <div style={{ marginTop: '15px' }}>
               <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Тип данных:</label>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={() => {
-                    const newSettings = { ...contextMenuCell, type: 'text' };
-                    setContextMenuCell(newSettings);
-                    updateCellSettings(contextMenuCell.row, contextMenuCell.col, { type: 'text' });
-                    closeModal();
-                  }}
-                  style={{
-                    padding: '8px 16px',
-                    background: contextMenuCell.type === 'text' ? '#007bff' : '#6c757d',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    flex: 1
-                  }}
-                >
-                  Текст
-                </button>
-                <button
-                  onClick={() => {
-                    const newSettings = { ...contextMenuCell, type: 'checkbox' };
-                    setContextMenuCell(newSettings);
-                    updateCellSettings(contextMenuCell.row, contextMenuCell.col, { type: 'checkbox' });
-                    closeModal();
-                  }}
-                  style={{
-                    padding: '8px 16px',
-                    background: contextMenuCell.type === 'checkbox' ? '#007bff' : '#6c757d',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    flex: 1
-                  }}
-                >
-                  Чекбокс
-                </button>
+                <button onClick={() => { updateCellSettings(contextMenuCell.row, contextMenuCell.col, { type: 'text' }); closeModal(); }}
+                  style={{ flex: 1, padding: '8px 16px', background: contextMenuCell.type === 'text' ? '#007bff' : '#6c757d', color: 'white', border: 'none', borderRadius: '4px' }}>Текст</button>
+                <button onClick={() => { updateCellSettings(contextMenuCell.row, contextMenuCell.col, { type: 'checkbox' }); closeModal(); }}
+                  style={{ flex: 1, padding: '8px 16px', background: contextMenuCell.type === 'checkbox' ? '#007bff' : '#6c757d', color: 'white', border: 'none', borderRadius: '4px' }}>Чекбокс</button>
               </div>
             </div>
 
-            <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee' }}>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button
-                  onClick={() => {
-                    updateCellSettings(contextMenuCell.row, contextMenuCell.col, null);
-                    closeModal();
-                  }}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#dc3545',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    flex: 1
-                  }}
-                >
-                  Сбросить
-                </button>
-
-                <button
-                  onClick={closeModal}
-                  style={{
-                    padding: '8px 16px',
-                    background: '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    flex: 1
-                  }}
-                >
-                  Применить
-                </button>
-              </div>
+            <div style={{ marginTop: '20px', paddingTop: '15px', borderTop: '1px solid #eee', display: 'flex', gap: '10px' }}>
+              <button onClick={() => { updateCellSettings(contextMenuCell.row, contextMenuCell.col, null); closeModal(); }}
+                style={{ flex: 1, padding: '8px 16px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}>Сбросить</button>
+              <button onClick={closeModal}
+                style={{ flex: 1, padding: '8px 16px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}>Применить</button>
             </div>
           </>
         )}
       </div>
 
-      {/* Стили для чекбоксов */}
       <style>{`
-        .handsontable .htCheckbox {
-          text-align: center;
-          vertical-align: middle;
-        }
-
-        .handsontable .htCheckbox input[type="checkbox"] {
-          margin: 0;
-          cursor: pointer;
-          transform: scale(1.2);
-        }
-
-        .handsontable td {
-          vertical-align: middle;
-          cursor: default;
-        }
-
-        .handsontable td:hover {
-          outline: 2px solid rgba(0, 123, 255, 0.3);
-          outline-offset: -2px;
-        }
-
-        /* Стили для контекстного меню */
-        .htContextMenu {
-          z-index: 999;
-        }
-
-        .htContextMenu table.htCore {
-          min-width: 220px;
-        }
-
-        .htContextMenu table tbody tr td {
-          padding: 8px 12px;
-          cursor: pointer;
-          white-space: nowrap;
-        }
-
-        .htContextMenu table tbody tr td:hover {
-          background-color: #f8f9fa;
-        }
-
-        .handsontable .htLeft {
-          text-align: left;
-        }
-
-        .handsontable .htCenter {
-          text-align: center;
-        }
-
-        .handsontable .htRight {
-          text-align: right;
-        }
+        .handsontable td { vertical-align: middle; }
+        .handsontable td:hover { outline: 2px solid rgba(0,123,255,0.3); outline-offset: -2px; }
+        .htContextMenu table.htCore { min-width: 220px; }
+        .htContextMenu td { padding: 8px 12px; }
+        .htContextMenu td:hover { background-color: #f8f9fa; }
       `}</style>
     </div>
   );
