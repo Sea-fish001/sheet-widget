@@ -8,8 +8,8 @@ from django.utils import timezone
 import csv
 import json
 
-from .models import Table
-from .serializers import TableSerializer
+from .models import Table, WidgetInfo
+from .serializers import TableSerializer, WidgetInfoSerializer
 
 
 class TableViewSet(viewsets.ModelViewSet):
@@ -37,6 +37,11 @@ class TableViewSet(viewsets.ModelViewSet):
         )
         response['Content-Disposition'] = f'attachment; filename="{table.title or "table_" + str(table.id)}.json"'
         return response
+
+
+class WidgetInfoViewSet(viewsets.ModelViewSet):
+    queryset = WidgetInfo.objects.all().order_by('-created_at')
+    serializer_class = WidgetInfoSerializer
 
     @action(detail=True, methods=['get'])
     def export_csv(self, request, pk=None):

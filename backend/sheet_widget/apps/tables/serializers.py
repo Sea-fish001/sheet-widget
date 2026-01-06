@@ -1,6 +1,6 @@
 # serializers.py
 from rest_framework import serializers
-from .models import Table
+from .models import Table, WidgetInfo
 
 
 class TableSerializer(serializers.ModelSerializer):
@@ -21,6 +21,13 @@ class TableSerializer(serializers.ModelSerializer):
         if not isinstance(value, dict):
             raise serializers.ValidationError("cell_settings должен быть словарем")
         return value
+
+
+class WidgetInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WidgetInfo
+        fields = ['id', 'widget_id', 'user_id', 'role', 'config', 'board', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
     def validate_data(self, value):
         """Валидация данных таблицы"""
