@@ -3,6 +3,7 @@ import { HotTable } from '@handsontable/react';
 import Handsontable from 'handsontable';
 import { registerAllModules } from 'handsontable/registry';
 import axios from 'axios';
+import HyperFormula from 'hyperformula';
 
 registerAllModules();
 
@@ -51,19 +52,38 @@ function TableEditor({ id, compactMode = false }) {
   const saveTable = () => {
     if (!hotRef.current) return;
     const hot = hotRef.current.hotInstance;
-    const currentData = hot.getData();
+
+    let sourceData;
+    try {
+      sourceData = hot.getSourceData();
+    } catch (e) {
+      // Если метод не поддерживается, попробуем другой способ
+      console.warn('getSourceData not available, trying alternative');
+      sourceData = hot.getData();
+      const formulas = hot.getPlugin('formulas');
+      if (formulas) {
+        const formulaData = formulas.getFormulas();
+        sourceData = sourceData.map((row, rowIndex) =>
+          row.map((cell, colIndex) => {
+            const formula = formulaData[rowIndex] && formulaData[rowIndex][colIndex];
+            return formula || cell;
+          })
+        );
+      }
+    }
 
     axios.patch(`${API_BASE}${id}/`, {
       title,
-      data: { rows: currentData },
+      data: { rows: sourceData }, // ✅ Сохраняем формулы
       cell_settings: cellSettings
     }).then(() => {
-      console.log('Table saved successfully');
+      console.log('Table saved successfully with formulas');
     }).catch((error) => {
       console.error('Save error:', error);
       alert('Ошибка сохранения');
     });
   };
+
 
   // Получить настройки ячейки
   const getCellSettings = (row, col) => {
@@ -372,6 +392,7 @@ function TableEditor({ id, compactMode = false }) {
           autoColumnSize={false}
 
           licenseKey="non-commercial-and-evaluation"
+          formulas={{engine: HyperFormula}}
           contextMenu={createContextMenu()}
           manualRowResize={true}
           manualColumnResize={true}

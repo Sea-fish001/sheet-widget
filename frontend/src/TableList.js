@@ -47,9 +47,10 @@ function TableList({ onTableSelect }) {
     }
   };
 
+//<h2>Мои таблицы</h2>
   return (
     <div>
-      <h2>Мои таблицы</h2>
+
 
       <button
         onClick={() => setShowCreateDialog(true)}
