@@ -32,7 +32,7 @@ function App() {
                       Закрыть редактор
                     </button>
                   </div>
-                  <TableEditor id={activeTableId} compactMode={true} />
+                  <TableEditor id={activeTableId} compactMode={false} />
                 </div>
               )}
             </div>
