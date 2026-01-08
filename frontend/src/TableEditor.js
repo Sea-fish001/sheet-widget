@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { HotTable } from '@handsontable/react';
+import Handsontable from 'handsontable';
 import { registerAllModules } from 'handsontable/registry';
 import { textRenderer } from 'handsontable/renderers/textRenderer';
 import axios from 'axios';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx-js-style';
+import HyperFormula from 'hyperformula';
 
 registerAllModules();
 
@@ -67,15 +69,33 @@ function TableEditor({ id, compactMode = false }) {
     }
   }, [id]);
 
-  // Сохранение
+  // Сохранение таблицы
   const saveTable = () => {
     if (!hotRef.current) return;
     const hot = hotRef.current.hotInstance;
-    const currentData = hot.getData();
+
+    let sourceData;
+    try {
+      sourceData = hot.getSourceData();
+    } catch (e) {
+      // Если метод не поддерживается, попробуем другой способ
+      console.warn('getSourceData not available, trying alternative');
+      sourceData = hot.getData();
+      const formulas = hot.getPlugin('formulas');
+      if (formulas) {
+        const formulaData = formulas.getFormulas();
+        sourceData = sourceData.map((row, rowIndex) =>
+          row.map((cell, colIndex) => {
+            const formula = formulaData[rowIndex] && formulaData[rowIndex][colIndex];
+            return formula || cell;
+          })
+        );
+      }
+    }
 
     const payload = {
       title,
-      data: { rows: currentData },
+      data: { rows: sourceData }, // ✅ Сохраняем формулы
       cell_settings: cellSettings
     };
 
@@ -523,7 +543,7 @@ function TableEditor({ id, compactMode = false }) {
         </div>
       )}
 
-      {/* Handsontable */}
+      {/* Таблица */}
       {tableLoaded && (
         <HotTable
           ref={hotRef}
@@ -536,6 +556,7 @@ function TableEditor({ id, compactMode = false }) {
           colWidths={100}
           stretchH="none"
           licenseKey="non-commercial-and-evaluation"
+          formulas={{engine: HyperFormula}}
           contextMenu={createContextMenu()}
           manualRowResize={true}
           manualColumnResize={true}

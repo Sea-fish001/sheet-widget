@@ -13,17 +13,17 @@ function App() {
         <Routes>
           <Route path="/" element={
             <div>
-              <div style={{ marginBottom: '20px' }}>
+              <div style={{ marginBottom: '15px' }}>
                 <TableList onTableSelect={setActiveTableId} />
               </div>
               {activeTableId && (
                 <div style={{
                   border: '1px solid #ddd',
                   borderRadius: '8px',
-                  padding: '20px',
-                  marginTop: '30px'
+                  padding: '15px',
+                  marginTop: '5px'
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
                     <h3>Редактор таблицы</h3>
                     <button
                       onClick={() => setActiveTableId(null)}
