@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'sheet_widget.apps.tables',
+    'sheet_widget.apps.widgets',
 ]
 
 MIDDLEWARE = [
