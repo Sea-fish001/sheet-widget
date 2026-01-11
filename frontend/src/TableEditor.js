@@ -455,7 +455,7 @@ function TableEditor({ id, compactMode = false, showCompactControls = false }) {
     : {};
 
   const tableWrapperStyle = compactMode
-    ? { flex: 1, minHeight: 0 }
+    ? { flex: 1, minHeight: '240px', height: '100%' }
     : {};
 
   return (
@@ -555,7 +555,7 @@ function TableEditor({ id, compactMode = false, showCompactControls = false }) {
       )}
 
       {compactMode && showCompactControls && (
-        <div style={{ marginBottom: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ marginBottom: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <button
               onClick={() => setShowImportMenu(!showImportMenu)}

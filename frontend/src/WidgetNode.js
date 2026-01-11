@@ -28,6 +28,8 @@ const titleStyle = {
 
 const editorContainerStyle = {
   flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
   border: '1px solid #e5e7eb',
   borderRadius: '10px',
   overflow: 'hidden',
