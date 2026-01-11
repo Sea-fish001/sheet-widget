@@ -11,6 +11,7 @@ import {
   useNodesState
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
+import { useNavigate } from 'react-router-dom';
 
 import WidgetNode from './WidgetNode';
 
@@ -49,6 +50,7 @@ const codeStyle = {
 };
 
 function WidgetCanvas() {
+  const navigate = useNavigate();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [widgetInfo, setWidgetInfo] = useState(null);
@@ -149,6 +151,15 @@ function WidgetCanvas() {
     }
   };
 
+  const handleNodeClick = useCallback(
+    (_, node) => {
+      if (node?.data?.table?.id) {
+        navigate(`/table/${node.data.table.id}`);
+      }
+    },
+    [navigate]
+  );
+
   const simulateInfo = () => {
     updateInfo({
       widgetId: 101,
@@ -178,6 +189,7 @@ function WidgetCanvas() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onNodeClick={handleNodeClick}
             fitView
           >
             <MiniMap pannable zoomable />
