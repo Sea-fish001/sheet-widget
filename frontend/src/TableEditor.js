@@ -467,6 +467,21 @@ function TableEditor({
   const resolvedCompactHeight = compactHeight && compactHeight > 0 ? compactHeight : '100%';
   const resolvedCompactWidth = compactWidth && compactWidth > 0 ? compactWidth : '100%';
 
+  useEffect(() => {
+    if (!compactMode || !hotRef.current) {
+      return;
+    }
+    const hot = hotRef.current.hotInstance;
+    if (!hot) {
+      return;
+    }
+    hot.updateSettings({
+      height: resolvedCompactHeight,
+      width: resolvedCompactWidth
+    });
+    hot.render();
+  }, [compactMode, resolvedCompactHeight, resolvedCompactWidth]);
+
   return (
     <div style={containerStyle} className="nodrag">
       {/* Скрытый input для импорта */}
@@ -565,6 +580,20 @@ function TableEditor({
 
       {compactMode && showCompactControls && (
         <div style={{ marginBottom: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onBlur={saveTable}
+            placeholder="Название таблицы"
+            style={{
+              padding: '6px 10px',
+              fontSize: '12px',
+              borderRadius: '6px',
+              border: '1px solid #d1d5db',
+              minWidth: '140px',
+              flex: '1 1 140px'
+            }}
+          />
           <div style={{ position: 'relative', display: 'inline-block' }}>
             <button
               onClick={() => setShowImportMenu(!showImportMenu)}
