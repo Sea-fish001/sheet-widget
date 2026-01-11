@@ -180,6 +180,7 @@ function WidgetCanvas() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            nodeDragHandle=".node-drag-handle"
             fitView
           >
             <MiniMap pannable zoomable />

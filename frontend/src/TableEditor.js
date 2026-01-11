@@ -468,7 +468,7 @@ function TableEditor({
   const resolvedCompactWidth = compactWidth && compactWidth > 0 ? compactWidth : '100%';
 
   return (
-    <div style={containerStyle}>
+    <div style={containerStyle} className="nodrag">
       {/* Скрытый input для импорта */}
       <input
         type="file"
@@ -635,7 +635,7 @@ function TableEditor({
 
       {/* Таблица */}
       {tableLoaded && (
-        <div style={tableWrapperStyle}>
+        <div style={tableWrapperStyle} className="nodrag">
           <HotTable
             ref={hotRef}
             data={hotData}

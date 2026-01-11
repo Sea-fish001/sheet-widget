@@ -23,7 +23,8 @@ const titleStyle = {
   fontSize: '16px',
   fontWeight: 'bold',
   marginBottom: '8px',
-  color: '#1f2933'
+  color: '#1f2933',
+  cursor: 'grab'
 };
 
 const editorContainerStyle = {
@@ -68,10 +69,12 @@ function WidgetNode({ data }) {
 
   return (
     <div style={containerStyle}>
-      <div style={titleStyle}>{table ? 'Таблица' : data?.title || 'Новый виджет'}</div>
+      <div style={titleStyle} className="node-drag-handle">
+        {table ? 'Таблица' : data?.title || 'Новый виджет'}
+      </div>
       {table ? (
         <>
-          <div style={editorContainerStyle} ref={editorRef}>
+          <div style={editorContainerStyle} ref={editorRef} className="nodrag">
             <TableEditor
               id={table.id}
               compactMode
