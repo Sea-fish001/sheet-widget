@@ -1,5 +1,6 @@
 import React from 'react';
 import { Handle, Position } from '@xyflow/react';
+import TableEditor from './TableEditor';
 
 const containerStyle = {
   padding: '14px',
@@ -24,6 +25,13 @@ const metaStyle = {
   lineHeight: 1.4
 };
 
+const editorContainerStyle = {
+  marginTop: '12px',
+  border: '1px solid #e5e7eb',
+  borderRadius: '10px',
+  overflow: 'hidden'
+};
+
 function WidgetNode({ data }) {
   const info = data?.info;
   const boardName = info?.board?.name || 'Не указана';
@@ -35,11 +43,16 @@ function WidgetNode({ data }) {
     <div style={containerStyle}>
       <div style={titleStyle}>{data?.title || table?.title || 'Новый виджет'}</div>
       {table ? (
-        <div style={metaStyle}>
-          <div><strong>Таблица:</strong> {table.title || 'Без названия'}</div>
-          <div><strong>Размер:</strong> {rowCount}×{colCount}</div>
-          <div><strong>ID:</strong> {table.id}</div>
-        </div>
+        <>
+          <div style={metaStyle}>
+            <div><strong>Таблица:</strong> {table.title || 'Без названия'}</div>
+            <div><strong>Размер:</strong> {rowCount}×{colCount}</div>
+            <div><strong>ID:</strong> {table.id}</div>
+          </div>
+          <div style={editorContainerStyle}>
+            <TableEditor id={table.id} compactMode />
+          </div>
+        </>
       ) : info ? (
         <div style={metaStyle}>
           <div><strong>ID:</strong> {info.widgetId}</div>

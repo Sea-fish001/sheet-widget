@@ -11,8 +11,6 @@ import {
   useNodesState
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import TableEditor from './TableEditor';
-
 import WidgetNode from './WidgetNode';
 
 const API_BASE = 'http://localhost:8000/api/widget-info/';
@@ -56,7 +54,6 @@ function WidgetCanvas() {
   const [syncStatus, setSyncStatus] = useState('idle');
   const [lastResponse, setLastResponse] = useState(null);
   const [tablesStatus, setTablesStatus] = useState('idle');
-  const [selectedTableId, setSelectedTableId] = useState(null);
 
   const nodeTypes = useMemo(() => ({ tableWidget: WidgetNode }), []);
 
@@ -151,15 +148,6 @@ function WidgetCanvas() {
     }
   };
 
-  const handleNodeClick = useCallback(
-    (_, node) => {
-      if (node?.data?.table?.id) {
-        setSelectedTableId(node.data.table.id);
-      }
-    },
-    []
-  );
-
   const simulateInfo = () => {
     updateInfo({
       widgetId: 101,
@@ -189,7 +177,6 @@ function WidgetCanvas() {
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onNodeClick={handleNodeClick}
             fitView
           >
             <MiniMap pannable zoomable />
@@ -260,28 +247,6 @@ function WidgetCanvas() {
             </div>
           )}
 
-          {selectedTableId && (
-            <div style={panelStyle}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <h4 style={{ marginTop: 0, marginBottom: 0 }}>Редактор таблицы</h4>
-                <button
-                  onClick={() => setSelectedTableId(null)}
-                  style={{
-                    padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #d1d5db',
-                    background: '#f9fafb',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Закрыть
-                </button>
-              </div>
-              <div style={{ marginTop: '12px' }}>
-                <TableEditor id={selectedTableId} compactMode />
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </ReactFlowProvider>
