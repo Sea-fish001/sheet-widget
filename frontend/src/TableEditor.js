@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { HotTable } from '@handsontable/react';
 import Handsontable from 'handsontable';
 import { registerAllModules } from 'handsontable/registry';
@@ -13,6 +14,8 @@ registerAllModules();
 const API_BASE = 'http://localhost:8000/api/tables/';
 
 function TableEditor({ id, compactMode = false }) {
+  const params = useParams();
+  const tableId = id ?? params.id;
   const hotRef = useRef(null);
   const fileInputRef = useRef(null);
   const importMenuRef = useRef(null);
@@ -43,8 +46,8 @@ function TableEditor({ id, compactMode = false }) {
 
   // Загрузка таблицы
   useEffect(() => {
-    if (id) {
-      axios.get(`${API_BASE}${id}/`)
+    if (tableId) {
+      axios.get(`${API_BASE}${tableId}/`)
         .then(res => {
           setTitle(res.data.title || 'Без названия');
 
@@ -67,7 +70,7 @@ function TableEditor({ id, compactMode = false }) {
       setTitle('Новая таблица');
       setTableLoaded(true);
     }
-  }, [id]);
+  }, [tableId]);
 
   // Сохранение таблицы
   const saveTable = () => {
@@ -99,8 +102,8 @@ function TableEditor({ id, compactMode = false }) {
       cell_settings: cellSettings
     };
 
-    if (id) {
-      axios.patch(`${API_BASE}${id}/`, payload)
+    if (tableId) {
+      axios.patch(`${API_BASE}${tableId}/`, payload)
         .then(() => console.log('Таблица сохранена'))
         .catch(err => {
           console.error('Ошибка сохранения:', err);
