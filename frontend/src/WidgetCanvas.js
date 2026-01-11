@@ -11,7 +11,7 @@ import {
   useNodesState
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useNavigate } from 'react-router-dom';
+import TableEditor from './TableEditor';
 
 import WidgetNode from './WidgetNode';
 
@@ -50,13 +50,13 @@ const codeStyle = {
 };
 
 function WidgetCanvas() {
-  const navigate = useNavigate();
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [widgetInfo, setWidgetInfo] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle');
   const [lastResponse, setLastResponse] = useState(null);
   const [tablesStatus, setTablesStatus] = useState('idle');
+  const [selectedTableId, setSelectedTableId] = useState(null);
 
   const nodeTypes = useMemo(() => ({ tableWidget: WidgetNode }), []);
 
@@ -154,10 +154,10 @@ function WidgetCanvas() {
   const handleNodeClick = useCallback(
     (_, node) => {
       if (node?.data?.table?.id) {
-        navigate(`/table/${node.data.table.id}`);
+        setSelectedTableId(node.data.table.id);
       }
     },
-    [navigate]
+    []
   );
 
   const simulateInfo = () => {
@@ -257,6 +257,29 @@ function WidgetCanvas() {
             <div style={panelStyle}>
               <h4 style={{ marginTop: 0 }}>Ответ бэка</h4>
               <pre style={codeStyle}>{JSON.stringify(lastResponse, null, 2)}</pre>
+            </div>
+          )}
+
+          {selectedTableId && (
+            <div style={panelStyle}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h4 style={{ marginTop: 0, marginBottom: 0 }}>Редактор таблицы</h4>
+                <button
+                  onClick={() => setSelectedTableId(null)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid #d1d5db',
+                    background: '#f9fafb',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Закрыть
+                </button>
+              </div>
+              <div style={{ marginTop: '12px' }}>
+                <TableEditor id={selectedTableId} compactMode />
+              </div>
             </div>
           )}
         </div>
