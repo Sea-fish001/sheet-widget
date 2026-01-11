@@ -104,11 +104,14 @@ function WidgetCanvas() {
           id: `table-${table.id}`,
           type: 'tableWidget',
           position: {
-            x: 360 + (index % 2) * 320,
-            y: 80 + Math.floor(index / 2) * 200
+            x: 360 + (index % 2) * 420,
+            y: 80 + Math.floor(index / 2) * 320
+          },
+          style: {
+            width: 520,
+            height: 420
           },
           data: {
-            title: `Таблица ${table.title || index + 1}`,
             table
           }
         }));

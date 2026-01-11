@@ -13,7 +13,7 @@ registerAllModules();
 
 const API_BASE = 'http://localhost:8000/api/tables/';
 
-function TableEditor({ id, compactMode = false }) {
+function TableEditor({ id, compactMode = false, showCompactControls = false }) {
   const params = useParams();
   const tableId = id ?? params.id;
   const hotRef = useRef(null);
@@ -546,6 +546,76 @@ function TableEditor({ id, compactMode = false }) {
         </div>
       )}
 
+      {compactMode && showCompactControls && (
+        <div style={{ marginBottom: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+              onClick={() => setShowImportMenu(!showImportMenu)}
+              style={{ padding: '6px 12px', background: '#28a745', color: 'white', fontSize: '12px' }}
+            >
+              Импорт ▼
+            </button>
+            {showImportMenu && (
+              <div
+                ref={importMenuRef}
+                style={{
+                  position: 'absolute', zIndex: 1000, background: 'white',
+                  border: '1px solid #ccc', borderRadius: '4px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '160px',
+                  marginTop: '5px'
+                }}
+              >
+                <button onClick={() => { setShowImportMenu(false); handleImport('csv'); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  CSV
+                </button>
+                <button onClick={() => { setShowImportMenu(false); handleImport('json'); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  JSON (с форматированием)
+                </button>
+                <button onClick={() => { setShowImportMenu(false); handleImport('excel'); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  Excel (.xlsx/.xls)
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              style={{ padding: '6px 12px', background: '#ffc107', color: 'black', fontWeight: 'bold', fontSize: '12px' }}
+            >
+              Экспорт ▼
+            </button>
+            {showExportMenu && (
+              <div
+                ref={exportMenuRef}
+                style={{
+                  position: 'absolute', zIndex: 1000, background: 'white',
+                  border: '1px solid #ccc', borderRadius: '4px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '160px',
+                  marginTop: '5px'
+                }}
+              >
+                <button onClick={() => { setShowExportMenu(false); exportToCSV(); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  CSV
+                </button>
+                <button onClick={() => { setShowExportMenu(false); exportToJSON(); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  JSON (с форматированием)
+                </button>
+                <button onClick={() => { setShowExportMenu(false); exportToExcel(); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  Excel (.xlsx)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Таблица */}
       {tableLoaded && (
         <HotTable
@@ -553,7 +623,7 @@ function TableEditor({ id, compactMode = false }) {
           data={hotData}
           rowHeaders={true}
           colHeaders={true}
-          height={compactMode ? "50vh" : "70vh"}
+          height={compactMode ? "100%" : "70vh"}
           width="100%"
           rowHeights={48}
           colWidths={100}
