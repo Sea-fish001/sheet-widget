@@ -13,7 +13,13 @@ registerAllModules();
 
 const API_BASE = 'http://localhost:8000/api/tables/';
 
-function TableEditor({ id, compactMode = false, showCompactControls = false }) {
+function TableEditor({
+  id,
+  compactMode = false,
+  showCompactControls = false,
+  compactHeight,
+  compactWidth
+}) {
   const params = useParams();
   const tableId = id ?? params.id;
   const hotRef = useRef(null);
@@ -458,6 +464,9 @@ function TableEditor({ id, compactMode = false, showCompactControls = false }) {
     ? { flex: 1, minHeight: '240px', height: '100%' }
     : {};
 
+  const resolvedCompactHeight = compactHeight && compactHeight > 0 ? compactHeight : '100%';
+  const resolvedCompactWidth = compactWidth && compactWidth > 0 ? compactWidth : '100%';
+
   return (
     <div style={containerStyle}>
       {/* Скрытый input для импорта */}
@@ -632,8 +641,8 @@ function TableEditor({ id, compactMode = false, showCompactControls = false }) {
             data={hotData}
             rowHeaders={true}
             colHeaders={true}
-            height={compactMode ? "100%" : "70vh"}
-            width="100%"
+            height={compactMode ? resolvedCompactHeight : "70vh"}
+            width={compactMode ? resolvedCompactWidth : "100%"}
             rowHeights={48}
             colWidths={100}
             stretchH="none"

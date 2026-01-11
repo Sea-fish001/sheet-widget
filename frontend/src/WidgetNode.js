@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import TableEditor from './TableEditor';
 
@@ -40,14 +40,45 @@ const editorContainerStyle = {
 function WidgetNode({ data }) {
   const info = data?.info;
   const table = data?.table;
+  const editorRef = useRef(null);
+  const [editorSize, setEditorSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!editorRef.current) {
+      return;
+    }
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) {
+        return;
+      }
+      const { width, height } = entry.contentRect;
+      setEditorSize((prev) => {
+        if (prev.width === width && prev.height === height) {
+          return prev;
+        }
+        return { width, height };
+      });
+    });
+
+    observer.observe(editorRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div style={containerStyle}>
       <div style={titleStyle}>{table ? 'Таблица' : data?.title || 'Новый виджет'}</div>
       {table ? (
         <>
-          <div style={editorContainerStyle}>
-            <TableEditor id={table.id} compactMode showCompactControls />
+          <div style={editorContainerStyle} ref={editorRef}>
+            <TableEditor
+              id={table.id}
+              compactMode
+              showCompactControls
+              compactHeight={editorSize.height}
+              compactWidth={editorSize.width}
+            />
           </div>
         </>
       ) : info ? (
