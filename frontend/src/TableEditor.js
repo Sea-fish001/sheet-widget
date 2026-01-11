@@ -450,8 +450,16 @@ function TableEditor({ id, compactMode = false, showCompactControls = false }) {
     setCellSettings(newSettings);
   };
 
+  const containerStyle = compactMode
+    ? { height: '100%', display: 'flex', flexDirection: 'column' }
+    : {};
+
+  const tableWrapperStyle = compactMode
+    ? { flex: 1, minHeight: 0 }
+    : {};
+
   return (
-    <div>
+    <div style={containerStyle}>
       {/* Скрытый input для импорта */}
       <input
         type="file"
@@ -618,36 +626,38 @@ function TableEditor({ id, compactMode = false, showCompactControls = false }) {
 
       {/* Таблица */}
       {tableLoaded && (
-        <HotTable
-          ref={hotRef}
-          data={hotData}
-          rowHeaders={true}
-          colHeaders={true}
-          height={compactMode ? "100%" : "70vh"}
-          width="100%"
-          rowHeights={48}
-          colWidths={100}
-          stretchH="none"
-          licenseKey="non-commercial-and-evaluation"
-          formulas={{engine: HyperFormula}}
-          contextMenu={createContextMenu()}
-          manualRowResize={true}
-          manualColumnResize={true}
-          manualRowMove={true}
-          manualColumnMove={true}
-          fixedColumnsStart={1}
-          cells={(row, col) => {
-            const settings = getCellSettings(row, col);
-            return {
-              renderer: createRenderer(),
-              type: settings.type === 'checkbox' ? 'checkbox' : 'text',
-              className: settings.type === 'checkbox' ? 'htCenter htMiddle' : ''
-            };
-          }}
-          afterRowMove={(moved, final) => { remapCellSettingsAfterMove('row', moved, final); setTimeout(saveTable, 100); }}
-          afterColumnMove={(moved, final) => { remapCellSettingsAfterMove('col', moved, final); setTimeout(saveTable, 100); }}
-          afterChange={(changes, source) => source === 'edit' && saveTable()}
-        />
+        <div style={tableWrapperStyle}>
+          <HotTable
+            ref={hotRef}
+            data={hotData}
+            rowHeaders={true}
+            colHeaders={true}
+            height={compactMode ? "100%" : "70vh"}
+            width="100%"
+            rowHeights={48}
+            colWidths={100}
+            stretchH="none"
+            licenseKey="non-commercial-and-evaluation"
+            formulas={{engine: HyperFormula}}
+            contextMenu={createContextMenu()}
+            manualRowResize={true}
+            manualColumnResize={true}
+            manualRowMove={true}
+            manualColumnMove={true}
+            fixedColumnsStart={1}
+            cells={(row, col) => {
+              const settings = getCellSettings(row, col);
+              return {
+                renderer: createRenderer(),
+                type: settings.type === 'checkbox' ? 'checkbox' : 'text',
+                className: settings.type === 'checkbox' ? 'htCenter htMiddle' : ''
+              };
+            }}
+            afterRowMove={(moved, final) => { remapCellSettingsAfterMove('row', moved, final); setTimeout(saveTable, 100); }}
+            afterColumnMove={(moved, final) => { remapCellSettingsAfterMove('col', moved, final); setTimeout(saveTable, 100); }}
+            afterChange={(changes, source) => source === 'edit' && saveTable()}
+          />
+        </div>
       )}
 
       {/* Модальное окно форматирования */}

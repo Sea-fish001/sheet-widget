@@ -1,18 +1,22 @@
 import React from 'react';
-import { Handle, NodeResizer, Position } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import TableEditor from './TableEditor';
 
 const containerStyle = {
   padding: '12px',
   width: '100%',
   height: '100%',
+  minWidth: '360px',
+  minHeight: '300px',
   borderRadius: '12px',
   border: '1px solid #d9e2ec',
   background: '#ffffff',
   boxShadow: '0 8px 16px rgba(15, 23, 42, 0.08)',
   fontFamily: 'Arial, sans-serif',
   display: 'flex',
-  flexDirection: 'column'
+  flexDirection: 'column',
+  resize: 'both',
+  overflow: 'auto'
 };
 
 const titleStyle = {
@@ -27,7 +31,8 @@ const editorContainerStyle = {
   border: '1px solid #e5e7eb',
   borderRadius: '10px',
   overflow: 'hidden',
-  background: '#ffffff'
+  background: '#ffffff',
+  minHeight: '220px'
 };
 
 function WidgetNode({ data }) {
@@ -36,13 +41,6 @@ function WidgetNode({ data }) {
 
   return (
     <div style={containerStyle}>
-      <NodeResizer
-        minWidth={360}
-        minHeight={300}
-        isVisible
-        lineStyle={{ borderColor: '#94a3b8' }}
-        handleStyle={{ background: '#2563eb', borderRadius: '4px' }}
-      />
       <div style={titleStyle}>{table ? 'Таблица' : data?.title || 'Новый виджет'}</div>
       {table ? (
         <>
