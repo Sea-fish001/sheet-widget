@@ -54,8 +54,28 @@ function WidgetCanvas() {
   const [syncStatus, setSyncStatus] = useState('idle');
   const [lastResponse, setLastResponse] = useState(null);
   const [tablesStatus, setTablesStatus] = useState('idle');
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [rowsCount, setRowsCount] = useState(10);
+  const [colsCount, setColsCount] = useState(8);
 
   const nodeTypes = useMemo(() => ({ tableWidget: WidgetNode }), []);
+
+  const createTableNode = useCallback((table, index) => ({
+    id: `table-${table.id}`,
+    type: 'tableWidget',
+    position: {
+      x: 360 + (index % 2) * 420,
+      y: 80 + Math.floor(index / 2) * 320
+    },
+    style: {
+      width: 520,
+      height: 420
+    },
+    data: {
+      table
+    }
+  }), []);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
@@ -100,21 +120,7 @@ function WidgetCanvas() {
           return;
         }
         const tables = response.data || [];
-        const tableNodes = tables.map((table, index) => ({
-          id: `table-${table.id}`,
-          type: 'tableWidget',
-          position: {
-            x: 360 + (index % 2) * 420,
-            y: 80 + Math.floor(index / 2) * 320
-          },
-          style: {
-            width: 520,
-            height: 420
-          },
-          data: {
-            table
-          }
-        }));
+        const tableNodes = tables.map((table, index) => createTableNode(table, index));
         setNodes((current) => {
           const baseNodes = current.filter((node) => node.id === 'table-widget');
           return [...baseNodes, ...tableNodes];
@@ -132,7 +138,7 @@ function WidgetCanvas() {
     return () => {
       isMounted = false;
     };
-  }, [setNodes]);
+  }, [createTableNode, setNodes]);
 
   const handleSync = async () => {
     if (!widgetInfo) {
@@ -148,6 +154,36 @@ function WidgetCanvas() {
     } catch (error) {
       console.error(error);
       setSyncStatus('error');
+    }
+  };
+
+  const handleCreateTable = async () => {
+    if (!newTitle.trim()) {
+      alert('Введите название таблицы');
+      return;
+    }
+
+    const emptyRows = Array.from({ length: rowsCount }, () =>
+      Array.from({ length: colsCount }, () => '')
+    );
+
+    try {
+      const response = await axios.post(TABLES_API, {
+        title: newTitle,
+        data: { rows: emptyRows }
+      });
+      setNodes((current) => {
+        const index = current.length;
+        const newNode = createTableNode(response.data, index);
+        return [...current, newNode];
+      });
+      setNewTitle('');
+      setRowsCount(10);
+      setColsCount(8);
+      setShowCreateDialog(false);
+    } catch (error) {
+      console.error(error);
+      alert('Ошибка создания таблицы');
     }
   };
 
@@ -190,6 +226,22 @@ function WidgetCanvas() {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={panelStyle}>
+            <h3 style={{ marginTop: 0 }}>Создать таблицу</h3>
+            <button
+              onClick={() => setShowCreateDialog(true)}
+              style={{
+                padding: '10px 16px',
+                borderRadius: '8px',
+                border: 'none',
+                background: '#22c55e',
+                color: '#fff',
+                cursor: 'pointer'
+              }}
+            >
+              + Новая таблица
+            </button>
+          </div>
           <div style={panelStyle}>
             <h3 style={{ marginTop: 0 }}>Интеграция getInfo</h3>
             <p style={{ color: '#4b5563', marginTop: 0 }}>
@@ -253,6 +305,96 @@ function WidgetCanvas() {
 
         </div>
       </div>
+
+      {showCreateDialog && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            padding: '30px',
+            borderRadius: '12px',
+            width: '400px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+          }}>
+            <h3 style={{ marginTop: 0 }}>Новая таблица</h3>
+
+            <div style={{ marginBottom: '15px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                Название таблицы
+              </label>
+              <input
+                type="text"
+                value={newTitle}
+                onChange={e => setNewTitle(e.target.value)}
+                placeholder="Например: Продажи за 2025"
+                style={{ width: '100%', padding: '10px', fontSize: '16px' }}
+                autoFocus
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                  Строк
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={rowsCount}
+                  onChange={e => setRowsCount(parseInt(e.target.value, 10) || 1)}
+                  style={{ width: '100%', padding: '10px', fontSize: '16px' }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
+                  Столбцов
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={colsCount}
+                  onChange={e => setColsCount(parseInt(e.target.value, 10) || 1)}
+                  style={{ width: '100%', padding: '10px', fontSize: '16px' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ textAlign: 'right' }}>
+              <button
+                onClick={() => setShowCreateDialog(false)}
+                style={{ marginRight: '10px', padding: '10px 20px' }}
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleCreateTable}
+                style={{
+                  padding: '10px 24px',
+                  background: '#007bff',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  fontWeight: 'bold'
+                }}
+              >
+                Создать {rowsCount}×{colsCount}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ReactFlowProvider>
   );
 }
