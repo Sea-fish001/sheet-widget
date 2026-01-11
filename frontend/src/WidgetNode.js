@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Handle, Position } from '@xyflow/react';
+import { Handle, Position, useViewport } from '@xyflow/react';
 import TableEditor from './TableEditor';
 
 const containerStyle = {
@@ -43,6 +43,12 @@ function WidgetNode({ data }) {
   const table = data?.table;
   const editorRef = useRef(null);
   const [editorSize, setEditorSize] = useState({ width: 0, height: 0 });
+  const [tableTitle, setTableTitle] = useState(table?.title || 'Без названия');
+  const { zoom } = useViewport();
+
+  useEffect(() => {
+    setTableTitle(table?.title || 'Без названия');
+  }, [table?.title]);
 
   useEffect(() => {
     if (!editorRef.current) {
@@ -70,7 +76,7 @@ function WidgetNode({ data }) {
   return (
     <div style={containerStyle}>
       <div style={titleStyle} className="node-drag-handle">
-        {table ? 'Таблица' : data?.title || 'Новый виджет'}
+        {table ? tableTitle : data?.title || 'Новый виджет'}
       </div>
       {table ? (
         <>
@@ -81,6 +87,8 @@ function WidgetNode({ data }) {
               showCompactControls
               compactHeight={editorSize.height}
               compactWidth={editorSize.width}
+              viewportZoom={zoom}
+              onTitleChange={setTableTitle}
             />
           </div>
         </>

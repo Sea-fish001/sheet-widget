@@ -18,7 +18,9 @@ function TableEditor({
   compactMode = false,
   showCompactControls = false,
   compactHeight,
-  compactWidth
+  compactWidth,
+  viewportZoom,
+  onTitleChange
 }) {
   const params = useParams();
   const tableId = id ?? params.id;
@@ -55,7 +57,11 @@ function TableEditor({
     if (tableId) {
       axios.get(`${API_BASE}${tableId}/`)
         .then(res => {
-          setTitle(res.data.title || 'Без названия');
+          const nextTitle = res.data.title || 'Без названия';
+          setTitle(nextTitle);
+          if (onTitleChange) {
+            onTitleChange(nextTitle);
+          }
 
           let rows = [];
           if (Array.isArray(res.data.data)) {
@@ -479,8 +485,11 @@ function TableEditor({
       height: resolvedCompactHeight,
       width: resolvedCompactWidth
     });
+    if (typeof viewportZoom === 'number') {
+      hot.refreshDimensions();
+    }
     hot.render();
-  }, [compactMode, resolvedCompactHeight, resolvedCompactWidth]);
+  }, [compactMode, resolvedCompactHeight, resolvedCompactWidth, viewportZoom]);
 
   return (
     <div style={containerStyle} className="nodrag">
@@ -496,7 +505,13 @@ function TableEditor({
         <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <input
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={e => {
+              const nextTitle = e.target.value;
+              setTitle(nextTitle);
+              if (onTitleChange) {
+                onTitleChange(nextTitle);
+              }
+            }}
             style={{ fontSize: '20px', padding: '8px', width: '350px' }}
             placeholder="Название таблицы"
           />
@@ -582,7 +597,13 @@ function TableEditor({
         <div style={{ marginBottom: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
           <input
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={e => {
+              const nextTitle = e.target.value;
+              setTitle(nextTitle);
+              if (onTitleChange) {
+                onTitleChange(nextTitle);
+              }
+            }}
             onBlur={saveTable}
             placeholder="Название таблицы"
             style={{
