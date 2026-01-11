@@ -27,11 +27,20 @@ const metaStyle = {
 function WidgetNode({ data }) {
   const info = data?.info;
   const boardName = info?.board?.name || 'Не указана';
+  const table = data?.table;
+  const rowCount = Array.isArray(table?.data?.rows) ? table.data.rows.length : 0;
+  const colCount = rowCount > 0 ? table.data.rows[0].length : 0;
 
   return (
     <div style={containerStyle}>
-      <div style={titleStyle}>{data?.title || 'Новый виджет'}</div>
-      {info ? (
+      <div style={titleStyle}>{data?.title || table?.title || 'Новый виджет'}</div>
+      {table ? (
+        <div style={metaStyle}>
+          <div><strong>Таблица:</strong> {table.title || 'Без названия'}</div>
+          <div><strong>Размер:</strong> {rowCount}×{colCount}</div>
+          <div><strong>ID:</strong> {table.id}</div>
+        </div>
+      ) : info ? (
         <div style={metaStyle}>
           <div><strong>ID:</strong> {info.widgetId}</div>
           <div><strong>Роль:</strong> {info.role}</div>

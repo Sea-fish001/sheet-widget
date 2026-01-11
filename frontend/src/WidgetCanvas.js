@@ -15,12 +15,13 @@ import '@xyflow/react/dist/style.css';
 import WidgetNode from './WidgetNode';
 
 const API_BASE = 'http://localhost:8000/api/widget-info/';
+const TABLES_API = 'http://localhost:8000/api/tables/';
 
 const initialNodes = [
   {
     id: 'table-widget',
     type: 'tableWidget',
-    position: { x: 240, y: 120 },
+    position: { x: 120, y: 120 },
     data: {
       title: 'Табличный виджет',
       description: 'Редактор таблиц и аналитики'
@@ -53,6 +54,7 @@ function WidgetCanvas() {
   const [widgetInfo, setWidgetInfo] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle');
   const [lastResponse, setLastResponse] = useState(null);
+  const [tablesStatus, setTablesStatus] = useState('idle');
 
   const nodeTypes = useMemo(() => ({ tableWidget: WidgetNode }), []);
 
@@ -88,6 +90,47 @@ function WidgetCanvas() {
       delete window.getInfo;
     };
   }, [updateInfo]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadTables = async () => {
+      setTablesStatus('loading');
+      try {
+        const response = await axios.get(TABLES_API);
+        if (!isMounted) {
+          return;
+        }
+        const tables = response.data || [];
+        const tableNodes = tables.map((table, index) => ({
+          id: `table-${table.id}`,
+          type: 'tableWidget',
+          position: {
+            x: 360 + (index % 2) * 320,
+            y: 80 + Math.floor(index / 2) * 200
+          },
+          data: {
+            title: `Таблица ${table.title || index + 1}`,
+            table
+          }
+        }));
+        setNodes((current) => {
+          const baseNodes = current.filter((node) => node.id === 'table-widget');
+          return [...baseNodes, ...tableNodes];
+        });
+        setTablesStatus('success');
+      } catch (error) {
+        console.error(error);
+        if (isMounted) {
+          setTablesStatus('error');
+        }
+      }
+    };
+
+    loadTables();
+    return () => {
+      isMounted = false;
+    };
+  }, [setNodes]);
 
   const handleSync = async () => {
     if (!widgetInfo) {
@@ -179,6 +222,16 @@ function WidgetCanvas() {
             <div style={{ marginTop: '12px', fontSize: '13px', color: '#6b7280' }}>
               Статус: {syncStatus}
             </div>
+          </div>
+
+          <div style={panelStyle}>
+            <h4 style={{ marginTop: 0 }}>Таблицы на холсте</h4>
+            <div style={{ fontSize: '13px', color: '#6b7280' }}>
+              Статус загрузки: {tablesStatus}
+            </div>
+            <p style={{ marginBottom: 0, fontSize: '13px', color: '#4b5563' }}>
+              Каждая таблица визуализируется как отдельный узел XYFlow.
+            </p>
           </div>
 
           <div style={panelStyle}>
