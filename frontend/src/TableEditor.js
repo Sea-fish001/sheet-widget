@@ -682,8 +682,8 @@ function TableEditor({
             data={hotData}
             rowHeaders={true}
             colHeaders={true}
-            height={compactMode ? resolvedCompactHeight : "70vh"}
-            width={compactMode ? resolvedCompactWidth : "100%"}
+            height={compactMode ? '100%' : '70vh'}
+            width="100%"
             rowHeights={48}
             colWidths={100}
             stretchH="none"
