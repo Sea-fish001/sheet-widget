@@ -48,7 +48,7 @@ const allowedNodeProps = new Set([
   'focusable'
 ]);
 
-const buildWidgetNode = (widgetId, index, extraProps = {}) => ({
+const buildWidgetNode = (widgetId, index, extraProps = {}, tableDefaults = {}) => ({
   id: `widget-${widgetId}`,
   type: 'tableWidget',
   position: {
@@ -58,6 +58,10 @@ const buildWidgetNode = (widgetId, index, extraProps = {}) => ({
   data: {
     title: 'Табличный виджет',
     widgetId,
+    autoCreateTable: Boolean(tableDefaults?.autoCreateTable),
+    initialTableTitle: tableDefaults?.title || 'Новая таблица',
+    initialRows: tableDefaults?.rows || 10,
+    initialCols: tableDefaults?.cols || 8,
     nodeProps: extraProps
   },
   ...extraProps
@@ -89,7 +93,12 @@ function WidgetCanvas() {
     setNodes((current) => {
       const widgetId = nextWidgetId.current++;
       setTargetWidgetId(widgetId);
-      return [...current, buildWidgetNode(widgetId, current.length)];
+      return [
+        ...current,
+        buildWidgetNode(widgetId, current.length, {}, {
+          autoCreateTable: true
+        })
+      ];
     });
   }, [setNodes]);
 

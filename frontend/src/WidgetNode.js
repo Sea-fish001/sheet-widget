@@ -57,26 +57,47 @@ function WidgetNode({ id, data }) {
   const [rowsCount, setRowsCount] = useState(10);
   const [colsCount, setColsCount] = useState(8);
   const [isCreating, setIsCreating] = useState(false);
+  const [autoCreateDone, setAutoCreateDone] = useState(false);
   const { setNodes } = useReactFlow();
 
   useEffect(() => {
     setTableTitle(table?.title || 'Без названия');
   }, [table?.title]);
 
-  const handleCreateTable = async () => {
-    if (!newTitle.trim()) {
+  useEffect(() => {
+    if (table || isCreating || autoCreateDone) {
+      return;
+    }
+    if (data?.autoCreateTable) {
+      const initialTitle = data?.initialTableTitle || newTitle;
+      const initialRows = Number(data?.initialRows) || rowsCount;
+      const initialCols = Number(data?.initialCols) || colsCount;
+      setNewTitle(initialTitle);
+      setRowsCount(initialRows);
+      setColsCount(initialCols);
+      setAutoCreateDone(true);
+      handleCreateTable(initialTitle, initialRows, initialCols);
+    }
+  }, [data, table, isCreating, autoCreateDone, newTitle, rowsCount, colsCount]);
+
+  const handleCreateTable = async (titleOverride, rowsOverride, colsOverride) => {
+    const titleValue = titleOverride ?? newTitle;
+    const rowsValue = rowsOverride ?? rowsCount;
+    const colsValue = colsOverride ?? colsCount;
+
+    if (!titleValue.trim()) {
       alert('Введите название таблицы');
       return;
     }
 
     setIsCreating(true);
-    const emptyRows = Array.from({ length: rowsCount }, () =>
-      Array.from({ length: colsCount }, () => '')
+    const emptyRows = Array.from({ length: rowsValue }, () =>
+      Array.from({ length: colsValue }, () => '')
     );
 
     try {
       const response = await axios.post(TABLES_API, {
-        title: newTitle,
+        title: titleValue,
         data: { rows: emptyRows }
       });
 
@@ -93,7 +114,7 @@ function WidgetNode({ id, data }) {
             : node
         )
       );
-      setTableTitle(response.data?.title || newTitle);
+      setTableTitle(response.data?.title || titleValue);
     } catch (error) {
       console.error(error);
       alert('Ошибка создания таблицы');
@@ -101,6 +122,7 @@ function WidgetNode({ id, data }) {
       setIsCreating(false);
     }
   };
+
 
   return (
     <div style={containerStyle}>
