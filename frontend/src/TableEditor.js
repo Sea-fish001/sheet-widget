@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams } from 'react-router-dom';
 import { HotTable } from '@handsontable/react';
 import Handsontable from 'handsontable';
 import { registerAllModules } from 'handsontable/registry';
@@ -22,8 +21,7 @@ function TableEditor({
   viewportZoom,
   onTitleChange
 }) {
-  const params = useParams();
-  const tableId = id ?? params.id;
+  const tableId = id;
   const hotRef = useRef(null);
   const fileInputRef = useRef(null);
   const importMenuRef = useRef(null);
@@ -472,24 +470,6 @@ function TableEditor({
 
   const resolvedCompactHeight = compactHeight && compactHeight > 0 ? compactHeight : '100%';
   const resolvedCompactWidth = compactWidth && compactWidth > 0 ? compactWidth : '100%';
-
-  useEffect(() => {
-    if (!compactMode || !hotRef.current) {
-      return;
-    }
-    const hot = hotRef.current.hotInstance;
-    if (!hot) {
-      return;
-    }
-    hot.updateSettings({
-      height: resolvedCompactHeight,
-      width: resolvedCompactWidth
-    });
-    if (typeof viewportZoom === 'number') {
-      hot.refreshDimensions();
-    }
-    hot.render();
-  }, [compactMode, resolvedCompactHeight, resolvedCompactWidth, viewportZoom]);
 
   return (
     <div style={containerStyle} className="nodrag">
