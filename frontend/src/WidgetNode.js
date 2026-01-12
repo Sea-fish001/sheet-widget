@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Handle, Position, useViewport } from '@xyflow/react';
 import TableEditor from './TableEditor';
 
@@ -38,17 +38,30 @@ const editorContainerStyle = {
   minHeight: '220px'
 };
 
-function WidgetNode({ data }) {
+function WidgetNode(nodeProps) {
+  const { data, selected } = nodeProps;
   const info = data?.info;
   const table = data?.table;
   const editorRef = useRef(null);
   const [editorSize, setEditorSize] = useState({ width: 0, height: 0 });
   const [tableTitle, setTableTitle] = useState(table?.title || 'Без названия');
+  const [newTitle, setNewTitle] = useState('Новая таблица');
+  const [rowsCount, setRowsCount] = useState(10);
+  const [colsCount, setColsCount] = useState(8);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
   const { zoom } = useViewport();
 
   useEffect(() => {
     setTableTitle(table?.title || 'Без названия');
   }, [table?.title]);
+
+  useEffect(() => {
+    if (table) {
+      setCreateError('');
+      setIsCreating(false);
+    }
+  }, [table]);
 
   useEffect(() => {
     if (!editorRef.current) {
@@ -73,8 +86,40 @@ function WidgetNode({ data }) {
     return () => observer.disconnect();
   }, []);
 
+  const resolvedContainerStyle = useMemo(() => {
+    if (!selected) {
+      return containerStyle;
+    }
+    return {
+      ...containerStyle,
+      borderColor: '#2563eb',
+      boxShadow: '0 10px 18px rgba(37, 99, 235, 0.2)'
+    };
+  }, [selected]);
+
+  const handleCreateTable = async () => {
+    if (!data?.onCreateTable) {
+      setCreateError('Создание таблицы недоступно');
+      return;
+    }
+    if (!newTitle.trim()) {
+      setCreateError('Введите название таблицы');
+      return;
+    }
+    setIsCreating(true);
+    setCreateError('');
+    try {
+      await data.onCreateTable(nodeProps.id, newTitle.trim(), rowsCount, colsCount);
+    } catch (error) {
+      console.error(error);
+      setCreateError('Ошибка создания таблицы');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   return (
-    <div style={containerStyle}>
+    <div style={resolvedContainerStyle}>
       <div style={titleStyle} className="node-drag-handle">
         {table ? tableTitle : data?.title || 'Новый виджет'}
       </div>
@@ -101,6 +146,59 @@ function WidgetNode({ data }) {
       ) : (
         <div style={{ fontSize: '13px', color: '#52606d', lineHeight: 1.4 }}>
           Ожидание вызова getInfo...
+        </div>
+      )}
+      {!table && (
+        <div style={{ marginTop: '12px', fontSize: '13px', color: '#52606d' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '8px' }}>Создать таблицу</div>
+          <div style={{ display: 'grid', gap: '8px' }}>
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(event) => setNewTitle(event.target.value)}
+              placeholder="Название таблицы"
+              className="nodrag"
+              style={{ padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="number"
+                min="1"
+                max="1000"
+                value={rowsCount}
+                onChange={(event) => setRowsCount(Number(event.target.value) || 1)}
+                className="nodrag"
+                style={{ flex: 1, padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+              />
+              <input
+                type="number"
+                min="1"
+                max="100"
+                value={colsCount}
+                onChange={(event) => setColsCount(Number(event.target.value) || 1)}
+                className="nodrag"
+                style={{ flex: 1, padding: '6px 8px', borderRadius: '6px', border: '1px solid #d1d5db' }}
+              />
+            </div>
+            <button
+              onClick={handleCreateTable}
+              className="nodrag"
+              disabled={isCreating}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: isCreating ? '#94a3b8' : '#2563eb',
+                color: '#fff',
+                cursor: isCreating ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isCreating ? 'Создаем...' : `Создать ${rowsCount}×${colsCount}`}
+            </button>
+            {createError && (
+              <div style={{ color: '#dc2626' }}>{createError}</div>
+            )}
+          </div>
         </div>
       )}
       <Handle type="target" position={Position.Left} style={{ background: '#7b8794' }} />

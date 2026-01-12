@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams } from 'react-router-dom';
 import { HotTable } from '@handsontable/react';
 import Handsontable from 'handsontable';
 import { registerAllModules } from 'handsontable/registry';
@@ -22,8 +21,7 @@ function TableEditor({
   viewportZoom,
   onTitleChange
 }) {
-  const params = useParams();
-  const tableId = id ?? params.id;
+  const tableId = id;
   const hotRef = useRef(null);
   const fileInputRef = useRef(null);
   const importMenuRef = useRef(null);

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import {
   ReactFlow,
@@ -18,7 +18,7 @@ const TABLES_API = 'http://localhost:8000/api/tables/';
 
 const initialNodes = [
   {
-    id: 'table-widget',
+    id: 'table-widget-1',
     type: 'tableWidget',
     position: { x: 120, y: 120 },
     data: {
@@ -47,61 +47,70 @@ const codeStyle = {
   whiteSpace: 'pre-wrap'
 };
 
+const createEmptyRows = (rowsCount, colsCount) =>
+  Array.from({ length: rowsCount }, () => Array.from({ length: colsCount }, () => ''));
+
+const applyNodeProps = (node, nodeProps) => {
+  if (!nodeProps || typeof nodeProps !== 'object') {
+    return node;
+  }
+
+  const {
+    style,
+    className,
+    draggable,
+    selectable,
+    connectable,
+    focusable,
+    zIndex
+  } = nodeProps;
+
+  return {
+    ...node,
+    style: style ? { ...(node.style || {}), ...style } : node.style,
+    className: className ?? node.className,
+    draggable: draggable ?? node.draggable,
+    selectable: selectable ?? node.selectable,
+    connectable: connectable ?? node.connectable,
+    focusable: focusable ?? node.focusable,
+    zIndex: zIndex ?? node.zIndex
+  };
+};
+
 function WidgetCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [widgetInfo, setWidgetInfo] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle');
   const [lastResponse, setLastResponse] = useState(null);
-  const [tablesStatus, setTablesStatus] = useState('idle');
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [rowsCount, setRowsCount] = useState(10);
-  const [colsCount, setColsCount] = useState(8);
+  const nodeCounterRef = useRef(2);
 
   const nodeTypes = useMemo(() => ({ tableWidget: WidgetNode }), []);
-
-  const createTableNode = useCallback((table, index) => ({
-    id: `table-${table.id}`,
-    type: 'tableWidget',
-    position: {
-      x: 360 + (index % 2) * 420,
-      y: 80 + Math.floor(index / 2) * 320
-    },
-    style: {
-      width: 520,
-      height: 420
-    },
-    data: {
-      table
-    }
-  }), []);
 
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge({ ...params, animated: true }, eds)),
     [setEdges]
   );
 
-  const updateInfo = useCallback(
-    (info) => {
-      setWidgetInfo(info);
-      setNodes((current) =>
-        current.map((node) =>
-          node.id === 'table-widget'
-            ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  info,
-                  config: info.config
-                }
-              }
-            : node
-        )
-      );
-    },
-    [setNodes]
-  );
+  const updateInfo = useCallback((info) => {
+    setWidgetInfo(info);
+    setNodes((current) =>
+      current.map((node) => {
+        if (node.type !== 'tableWidget') {
+          return node;
+        }
+        const updatedNode = {
+          ...node,
+          data: {
+            ...node.data,
+            info,
+            config: info.config
+          }
+        };
+        return applyNodeProps(updatedNode, info?.config?.nodeProps);
+      })
+    );
+  }, [setNodes]);
 
   useEffect(() => {
     window.getInfo = updateInfo;
@@ -109,36 +118,6 @@ function WidgetCanvas() {
       delete window.getInfo;
     };
   }, [updateInfo]);
-
-  useEffect(() => {
-    let isMounted = true;
-    const loadTables = async () => {
-      setTablesStatus('loading');
-      try {
-        const response = await axios.get(TABLES_API);
-        if (!isMounted) {
-          return;
-        }
-        const tables = response.data || [];
-        const tableNodes = tables.map((table, index) => createTableNode(table, index));
-        setNodes((current) => {
-          const baseNodes = current.filter((node) => node.id === 'table-widget');
-          return [...baseNodes, ...tableNodes];
-        });
-        setTablesStatus('success');
-      } catch (error) {
-        console.error(error);
-        if (isMounted) {
-          setTablesStatus('error');
-        }
-      }
-    };
-
-    loadTables();
-    return () => {
-      isMounted = false;
-    };
-  }, [createTableNode, setNodes]);
 
   const handleSync = async () => {
     if (!widgetInfo) {
@@ -157,35 +136,77 @@ function WidgetCanvas() {
     }
   };
 
-  const handleCreateTable = async () => {
-    if (!newTitle.trim()) {
-      alert('Введите название таблицы');
-      return;
-    }
+  const handleCreateTableForWidget = useCallback(async (nodeId, title, rowsCount, colsCount) => {
+    const emptyRows = createEmptyRows(rowsCount, colsCount);
+    const response = await axios.post(TABLES_API, {
+      title,
+      data: { rows: emptyRows }
+    });
 
-    const emptyRows = Array.from({ length: rowsCount }, () =>
-      Array.from({ length: colsCount }, () => '')
+    setNodes((current) =>
+      current.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                table: response.data
+              }
+            }
+          : node
+      )
     );
 
-    try {
-      const response = await axios.post(TABLES_API, {
-        title: newTitle,
-        data: { rows: emptyRows }
-      });
-      setNodes((current) => {
-        const index = current.length;
-        const newNode = createTableNode(response.data, index);
-        return [...current, newNode];
-      });
-      setNewTitle('');
-      setRowsCount(10);
-      setColsCount(8);
-      setShowCreateDialog(false);
-    } catch (error) {
-      console.error(error);
-      alert('Ошибка создания таблицы');
-    }
-  };
+    return response.data;
+  }, [setNodes]);
+
+  useEffect(() => {
+    setNodes((current) =>
+      current.map((node) =>
+        node.type === 'tableWidget'
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                onCreateTable: handleCreateTableForWidget
+              }
+            }
+          : node
+      )
+    );
+  }, [handleCreateTableForWidget, setNodes]);
+
+  const createWidgetNode = useCallback((index) => {
+    const baseNode = {
+      id: `table-widget-${index}`,
+      type: 'tableWidget',
+      position: {
+        x: 120 + (index % 2) * 420,
+        y: 120 + Math.floor(index / 2) * 320
+      },
+      style: {
+        width: 520,
+        height: 420
+      },
+      data: {
+        title: 'Табличный виджет',
+        description: 'Редактор таблиц и аналитики',
+        info: widgetInfo,
+        config: widgetInfo?.config,
+        onCreateTable: handleCreateTableForWidget
+      }
+    };
+    return applyNodeProps(baseNode, widgetInfo?.config?.nodeProps);
+  }, [handleCreateTableForWidget, widgetInfo]);
+
+  const handleAddWidget = useCallback(() => {
+    setNodes((current) => {
+      const nextIndex = nodeCounterRef.current;
+      nodeCounterRef.current += 1;
+      const newNode = createWidgetNode(nextIndex);
+      return [...current, newNode];
+    });
+  }, [createWidgetNode, setNodes]);
 
   const simulateInfo = () => {
     updateInfo({
@@ -195,7 +216,12 @@ function WidgetCanvas() {
       config: {
         view: 'sheet',
         theme: 'light',
-        allowExport: true
+        allowExport: true,
+        nodeProps: {
+          style: {
+            borderColor: '#2563eb'
+          }
+        }
       },
       board: {
         id: 7,
@@ -227,9 +253,9 @@ function WidgetCanvas() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={panelStyle}>
-            <h3 style={{ marginTop: 0 }}>Создать таблицу</h3>
+            <h3 style={{ marginTop: 0 }}>Создать виджет</h3>
             <button
-              onClick={() => setShowCreateDialog(true)}
+              onClick={handleAddWidget}
               style={{
                 padding: '10px 16px',
                 borderRadius: '8px',
@@ -239,7 +265,7 @@ function WidgetCanvas() {
                 cursor: 'pointer'
               }}
             >
-              + Новая таблица
+              + Новый виджет
             </button>
           </div>
           <div style={panelStyle}>
@@ -280,16 +306,6 @@ function WidgetCanvas() {
           </div>
 
           <div style={panelStyle}>
-            <h4 style={{ marginTop: 0 }}>Таблицы на холсте</h4>
-            <div style={{ fontSize: '13px', color: '#6b7280' }}>
-              Статус загрузки: {tablesStatus}
-            </div>
-            <p style={{ marginBottom: 0, fontSize: '13px', color: '#4b5563' }}>
-              Каждая таблица визуализируется как отдельный узел XYFlow.
-            </p>
-          </div>
-
-          <div style={panelStyle}>
             <h4 style={{ marginTop: 0 }}>Текущая конфигурация</h4>
             <pre style={codeStyle}>
               {widgetInfo ? JSON.stringify(widgetInfo, null, 2) : 'Нет данных. Ждём getInfo.'}
@@ -305,96 +321,6 @@ function WidgetCanvas() {
 
         </div>
       </div>
-
-      {showCreateDialog && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            padding: '30px',
-            borderRadius: '12px',
-            width: '400px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
-          }}>
-            <h3 style={{ marginTop: 0 }}>Новая таблица</h3>
-
-            <div style={{ marginBottom: '15px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                Название таблицы
-              </label>
-              <input
-                type="text"
-                value={newTitle}
-                onChange={e => setNewTitle(e.target.value)}
-                placeholder="Например: Продажи за 2025"
-                style={{ width: '100%', padding: '10px', fontSize: '16px' }}
-                autoFocus
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                  Строк
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="1000"
-                  value={rowsCount}
-                  onChange={e => setRowsCount(parseInt(e.target.value, 10) || 1)}
-                  style={{ width: '100%', padding: '10px', fontSize: '16px' }}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                  Столбцов
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={colsCount}
-                  onChange={e => setColsCount(parseInt(e.target.value, 10) || 1)}
-                  style={{ width: '100%', padding: '10px', fontSize: '16px' }}
-                />
-              </div>
-            </div>
-
-            <div style={{ textAlign: 'right' }}>
-              <button
-                onClick={() => setShowCreateDialog(false)}
-                style={{ marginRight: '10px', padding: '10px 20px' }}
-              >
-                Отмена
-              </button>
-              <button
-                onClick={handleCreateTable}
-                style={{
-                  padding: '10px 24px',
-                  background: '#007bff',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  fontWeight: 'bold'
-                }}
-              >
-                Создать {rowsCount}×{colsCount}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </ReactFlowProvider>
   );
 }
