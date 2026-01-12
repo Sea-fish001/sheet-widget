@@ -470,9 +470,6 @@ function TableEditor({
     ? { flex: 1, minHeight: '240px', height: '100%' }
     : {};
 
-  const resolvedCompactHeight = compactHeight && compactHeight > 0 ? compactHeight : '100%';
-  const resolvedCompactWidth = compactWidth && compactWidth > 0 ? compactWidth : '100%';
-
   useEffect(() => {
     if (!compactMode || !hotRef.current) {
       return;
@@ -481,15 +478,9 @@ function TableEditor({
     if (!hot) {
       return;
     }
-    hot.updateSettings({
-      height: resolvedCompactHeight,
-      width: resolvedCompactWidth
-    });
-    if (typeof viewportZoom === 'number') {
-      hot.refreshDimensions();
-    }
+    hot.refreshDimensions();
     hot.render();
-  }, [compactMode, resolvedCompactHeight, resolvedCompactWidth, viewportZoom]);
+  }, [compactMode, viewportZoom, hotData]);
 
   return (
     <div style={containerStyle} className="nodrag">
