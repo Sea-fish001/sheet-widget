@@ -17,14 +17,13 @@ function TableEditor({
   id,
   compactMode = false,
   showCompactControls = false,
-  compactHeight,
-  compactWidth,
   viewportZoom,
   onTitleChange
 }) {
   const params = useParams();
   const tableId = id ?? params.id;
   const hotRef = useRef(null);
+  const tableWrapperRef = useRef(null);
   const fileInputRef = useRef(null);
   const importMenuRef = useRef(null);
   const exportMenuRef = useRef(null);
@@ -482,6 +481,34 @@ function TableEditor({
     hot.render();
   }, [compactMode, viewportZoom, hotData]);
 
+  useEffect(() => {
+    if (!compactMode || !tableWrapperRef.current) {
+      return;
+    }
+
+    let frameId;
+    const observer = new ResizeObserver(() => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+      frameId = requestAnimationFrame(() => {
+        const hot = hotRef.current?.hotInstance;
+        if (hot) {
+          hot.refreshDimensions();
+          hot.render();
+        }
+      });
+    });
+
+    observer.observe(tableWrapperRef.current);
+    return () => {
+      observer.disconnect();
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+    };
+  }, [compactMode]);
+
   return (
     <div style={containerStyle} className="nodrag">
       {/* Скрытый input для импорта */}
@@ -676,7 +703,7 @@ function TableEditor({
 
       {/* Таблица */}
       {tableLoaded && (
-        <div style={tableWrapperStyle} className="nodrag">
+        <div style={tableWrapperStyle} className="nodrag" ref={tableWrapperRef}>
           <HotTable
             ref={hotRef}
             data={hotData}
