@@ -470,38 +470,6 @@ function TableEditor({
 
   const resolvedCompactHeight = compactHeight && compactHeight > 0 ? compactHeight : '100%';
   const resolvedCompactWidth = compactWidth && compactWidth > 0 ? compactWidth : '100%';
-  const lastCompactSizeRef = useRef({ width: null, height: null });
-
-  useEffect(() => {
-    if (!compactMode || !hotRef.current) {
-      return;
-    }
-    const hot = hotRef.current.hotInstance;
-    if (!hot) {
-      return;
-    }
-    const hasNumericWidth = typeof resolvedCompactWidth === 'number';
-    const hasNumericHeight = typeof resolvedCompactHeight === 'number';
-    if (hasNumericWidth && hasNumericHeight) {
-      const nextWidth = Math.round(resolvedCompactWidth);
-      const nextHeight = Math.round(resolvedCompactHeight);
-      const lastSize = lastCompactSizeRef.current;
-      if (lastSize.width === nextWidth && lastSize.height === nextHeight) {
-        return;
-      }
-      lastCompactSizeRef.current = { width: nextWidth, height: nextHeight };
-    }
-    requestAnimationFrame(() => {
-      hot.updateSettings({
-        height: resolvedCompactHeight,
-        width: resolvedCompactWidth
-      });
-      if (typeof viewportZoom === 'number') {
-        hot.refreshDimensions();
-      }
-      hot.render();
-    });
-  }, [compactMode, resolvedCompactHeight, resolvedCompactWidth, viewportZoom]);
 
   return (
     <div style={containerStyle} className="nodrag">
