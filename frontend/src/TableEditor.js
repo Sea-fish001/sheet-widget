@@ -467,16 +467,12 @@ function TableEditor({
     ? { flex: 1, minHeight: '240px', height: '100%' }
     : {};
 
-  useEffect(() => {
-    if (!compactMode || !hotRef.current) {
-      return;
-    }
-    const hot = hotRef.current.hotInstance;
-    if (!hot) {
-      return;
-    }
-    hot.render();
-  }, [compactMode]);
+  const hotTableSizing = compactMode
+    ? {}
+    : {
+        height: '70vh',
+        width: '100%'
+      };
 
   return (
     <div style={containerStyle} className="nodrag">
@@ -678,8 +674,7 @@ function TableEditor({
             data={hotData}
             rowHeaders={true}
             colHeaders={true}
-            height={compactMode ? '100%' : '70vh'}
-            width="100%"
+            {...hotTableSizing}
             rowHeights={48}
             colWidths={100}
             stretchH="none"
