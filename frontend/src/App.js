@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import TableList from './TableList';
 import TableEditor from './TableEditor';
+import WidgetCanvas from './WidgetCanvas';
 import 'handsontable/dist/handsontable.full.min.css';
 
 function App() {
@@ -10,6 +11,14 @@ function App() {
   return (
     <Router>
       <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
+        <nav style={{ marginBottom: '20px', display: 'flex', gap: '12px' }}>
+          <Link to="/" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 'bold' }}>
+            Таблицы
+          </Link>
+          <Link to="/flow" style={{ color: '#2563eb', textDecoration: 'none', fontWeight: 'bold' }}>
+            XYFlow демо
+          </Link>
+        </nav>
         <Routes>
           <Route path="/" element={
             <div>
@@ -37,6 +46,7 @@ function App() {
               )}
             </div>
           } />
+          <Route path="/flow" element={<WidgetCanvas />} />
           <Route path="/table/:id" element={<TableEditor />} />
         </Routes>
       </div>

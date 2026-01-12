@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { HotTable } from '@handsontable/react';
 import Handsontable from 'handsontable';
 import { registerAllModules } from 'handsontable/registry';
@@ -12,7 +13,17 @@ registerAllModules();
 
 const API_BASE = 'http://localhost:8000/api/tables/';
 
-function TableEditor({ id, compactMode = false }) {
+function TableEditor({
+  id,
+  compactMode = false,
+  showCompactControls = false,
+  compactHeight,
+  compactWidth,
+  viewportZoom,
+  onTitleChange
+}) {
+  const params = useParams();
+  const tableId = id ?? params.id;
   const hotRef = useRef(null);
   const fileInputRef = useRef(null);
   const importMenuRef = useRef(null);
@@ -43,10 +54,14 @@ function TableEditor({ id, compactMode = false }) {
 
   // Загрузка таблицы
   useEffect(() => {
-    if (id) {
-      axios.get(`${API_BASE}${id}/`)
+    if (tableId) {
+      axios.get(`${API_BASE}${tableId}/`)
         .then(res => {
-          setTitle(res.data.title || 'Без названия');
+          const nextTitle = res.data.title || 'Без названия';
+          setTitle(nextTitle);
+          if (onTitleChange) {
+            onTitleChange(nextTitle);
+          }
 
           let rows = [];
           if (Array.isArray(res.data.data)) {
@@ -67,7 +82,7 @@ function TableEditor({ id, compactMode = false }) {
       setTitle('Новая таблица');
       setTableLoaded(true);
     }
-  }, [id]);
+  }, [tableId]);
 
   // Сохранение таблицы
   const saveTable = () => {
@@ -99,8 +114,8 @@ function TableEditor({ id, compactMode = false }) {
       cell_settings: cellSettings
     };
 
-    if (id) {
-      axios.patch(`${API_BASE}${id}/`, payload)
+    if (tableId) {
+      axios.patch(`${API_BASE}${tableId}/`, payload)
         .then(() => console.log('Таблица сохранена'))
         .catch(err => {
           console.error('Ошибка сохранения:', err);
@@ -447,8 +462,37 @@ function TableEditor({ id, compactMode = false }) {
     setCellSettings(newSettings);
   };
 
+  const containerStyle = compactMode
+    ? { height: '100%', display: 'flex', flexDirection: 'column' }
+    : {};
+
+  const tableWrapperStyle = compactMode
+    ? { flex: 1, minHeight: '240px', height: '100%' }
+    : {};
+
+  const resolvedCompactHeight = compactHeight && compactHeight > 0 ? compactHeight : '100%';
+  const resolvedCompactWidth = compactWidth && compactWidth > 0 ? compactWidth : '100%';
+
+  useEffect(() => {
+    if (!compactMode || !hotRef.current) {
+      return;
+    }
+    const hot = hotRef.current.hotInstance;
+    if (!hot) {
+      return;
+    }
+    hot.updateSettings({
+      height: resolvedCompactHeight,
+      width: resolvedCompactWidth
+    });
+    if (typeof viewportZoom === 'number') {
+      hot.refreshDimensions();
+    }
+    hot.render();
+  }, [compactMode, resolvedCompactHeight, resolvedCompactWidth, viewportZoom]);
+
   return (
-    <div>
+    <div style={containerStyle} className="nodrag">
       {/* Скрытый input для импорта */}
       <input
         type="file"
@@ -461,7 +505,13 @@ function TableEditor({ id, compactMode = false }) {
         <div style={{ marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <input
             value={title}
-            onChange={e => setTitle(e.target.value)}
+            onChange={e => {
+              const nextTitle = e.target.value;
+              setTitle(nextTitle);
+              if (onTitleChange) {
+                onTitleChange(nextTitle);
+              }
+            }}
             style={{ fontSize: '20px', padding: '8px', width: '350px' }}
             placeholder="Название таблицы"
           />
@@ -543,38 +593,130 @@ function TableEditor({ id, compactMode = false }) {
         </div>
       )}
 
+      {compactMode && showCompactControls && (
+        <div style={{ marginBottom: '10px', display: 'flex', gap: '8px', flexWrap: 'wrap', flexShrink: 0 }}>
+          <input
+            value={title}
+            onChange={e => {
+              const nextTitle = e.target.value;
+              setTitle(nextTitle);
+              if (onTitleChange) {
+                onTitleChange(nextTitle);
+              }
+            }}
+            onBlur={saveTable}
+            placeholder="Название таблицы"
+            style={{
+              padding: '6px 10px',
+              fontSize: '12px',
+              borderRadius: '6px',
+              border: '1px solid #d1d5db',
+              minWidth: '140px',
+              flex: '1 1 140px'
+            }}
+          />
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+              onClick={() => setShowImportMenu(!showImportMenu)}
+              style={{ padding: '6px 12px', background: '#28a745', color: 'white', fontSize: '12px' }}
+            >
+              Импорт ▼
+            </button>
+            {showImportMenu && (
+              <div
+                ref={importMenuRef}
+                style={{
+                  position: 'absolute', zIndex: 1000, background: 'white',
+                  border: '1px solid #ccc', borderRadius: '4px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '160px',
+                  marginTop: '5px'
+                }}
+              >
+                <button onClick={() => { setShowImportMenu(false); handleImport('csv'); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  CSV
+                </button>
+                <button onClick={() => { setShowImportMenu(false); handleImport('json'); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  JSON (с форматированием)
+                </button>
+                <button onClick={() => { setShowImportMenu(false); handleImport('excel'); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  Excel (.xlsx/.xls)
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div style={{ position: 'relative', display: 'inline-block' }}>
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              style={{ padding: '6px 12px', background: '#ffc107', color: 'black', fontWeight: 'bold', fontSize: '12px' }}
+            >
+              Экспорт ▼
+            </button>
+            {showExportMenu && (
+              <div
+                ref={exportMenuRef}
+                style={{
+                  position: 'absolute', zIndex: 1000, background: 'white',
+                  border: '1px solid #ccc', borderRadius: '4px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)', minWidth: '160px',
+                  marginTop: '5px'
+                }}
+              >
+                <button onClick={() => { setShowExportMenu(false); exportToCSV(); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  CSV
+                </button>
+                <button onClick={() => { setShowExportMenu(false); exportToJSON(); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  JSON (с форматированием)
+                </button>
+                <button onClick={() => { setShowExportMenu(false); exportToExcel(); }}
+                  style={{ display: 'block', width: '100%', padding: '8px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+                  Excel (.xlsx)
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Таблица */}
       {tableLoaded && (
-        <HotTable
-          ref={hotRef}
-          data={hotData}
-          rowHeaders={true}
-          colHeaders={true}
-          height={compactMode ? "50vh" : "70vh"}
-          width="100%"
-          rowHeights={48}
-          colWidths={100}
-          stretchH="none"
-          licenseKey="non-commercial-and-evaluation"
-          formulas={{engine: HyperFormula}}
-          contextMenu={createContextMenu()}
-          manualRowResize={true}
-          manualColumnResize={true}
-          manualRowMove={true}
-          manualColumnMove={true}
-          fixedColumnsStart={1}
-          cells={(row, col) => {
-            const settings = getCellSettings(row, col);
-            return {
-              renderer: createRenderer(),
-              type: settings.type === 'checkbox' ? 'checkbox' : 'text',
-              className: settings.type === 'checkbox' ? 'htCenter htMiddle' : ''
-            };
-          }}
-          afterRowMove={(moved, final) => { remapCellSettingsAfterMove('row', moved, final); setTimeout(saveTable, 100); }}
-          afterColumnMove={(moved, final) => { remapCellSettingsAfterMove('col', moved, final); setTimeout(saveTable, 100); }}
-          afterChange={(changes, source) => source === 'edit' && saveTable()}
-        />
+        <div style={tableWrapperStyle} className="nodrag">
+          <HotTable
+            ref={hotRef}
+            data={hotData}
+            rowHeaders={true}
+            colHeaders={true}
+            height={compactMode ? resolvedCompactHeight : "70vh"}
+            width={compactMode ? resolvedCompactWidth : "100%"}
+            rowHeights={48}
+            colWidths={100}
+            stretchH="none"
+            licenseKey="non-commercial-and-evaluation"
+            formulas={{engine: HyperFormula}}
+            contextMenu={createContextMenu()}
+            manualRowResize={true}
+            manualColumnResize={true}
+            manualRowMove={true}
+            manualColumnMove={true}
+            fixedColumnsStart={1}
+            cells={(row, col) => {
+              const settings = getCellSettings(row, col);
+              return {
+                renderer: createRenderer(),
+                type: settings.type === 'checkbox' ? 'checkbox' : 'text',
+                className: settings.type === 'checkbox' ? 'htCenter htMiddle' : ''
+              };
+            }}
+            afterRowMove={(moved, final) => { remapCellSettingsAfterMove('row', moved, final); setTimeout(saveTable, 100); }}
+            afterColumnMove={(moved, final) => { remapCellSettingsAfterMove('col', moved, final); setTimeout(saveTable, 100); }}
+            afterChange={(changes, source) => source === 'edit' && saveTable()}
+          />
+        </div>
       )}
 
       {/* Модальное окно форматирования */}
