@@ -43,6 +43,7 @@ function WidgetNode(nodeProps) {
   const info = data?.info;
   const table = data?.table;
   const editorRef = useRef(null);
+  const sizeRef = useRef({ width: 0, height: 0 });
   const [editorSize, setEditorSize] = useState({ width: 0, height: 0 });
   const [tableTitle, setTableTitle] = useState(table?.title || 'Без названия');
   const [newTitle, setNewTitle] = useState('Новая таблица');
@@ -69,31 +70,32 @@ function WidgetNode(nodeProps) {
     }
 
     let frameId;
-    let isUpdating = false;
     const element = editorRef.current;
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (!entry || isUpdating) {
+      if (!entry) {
         return;
       }
       const nextWidth = Math.round(entry.contentRect.width);
       const nextHeight = Math.round(entry.contentRect.height);
+      const prevSize = sizeRef.current;
+
+      if (prevSize.width === nextWidth && prevSize.height === nextHeight) {
+        return;
+      }
 
       if (frameId) {
         cancelAnimationFrame(frameId);
       }
 
-      isUpdating = true;
-      observer.unobserve(element);
       frameId = requestAnimationFrame(() => {
+        sizeRef.current = { width: nextWidth, height: nextHeight };
         setEditorSize((prev) => {
           if (prev.width === nextWidth && prev.height === nextHeight) {
             return prev;
           }
           return { width: nextWidth, height: nextHeight };
         });
-        isUpdating = false;
-        observer.observe(element);
       });
     });
 
