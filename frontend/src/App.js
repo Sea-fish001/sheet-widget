@@ -10,6 +10,22 @@ if (typeof window !== 'undefined' && window.ResizeObserver) {
   };
 }
 
+if (typeof window !== 'undefined') {
+  const originalConsoleError = window.console?.error;
+  if (originalConsoleError) {
+    window.console.error = (...args) => {
+      const firstArg = args[0];
+      if (
+        typeof firstArg === 'string' &&
+        firstArg.includes('ResizeObserver loop completed with undelivered notifications')
+      ) {
+        return;
+      }
+      originalConsoleError(...args);
+    };
+  }
+}
+
 function App() {
   return (
     <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
