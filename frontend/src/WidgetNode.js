@@ -69,9 +69,11 @@ function WidgetNode(nodeProps) {
     }
 
     let frameId;
+    let isUpdating = false;
+    const element = editorRef.current;
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
-      if (!entry) {
+      if (!entry || isUpdating) {
         return;
       }
       const nextWidth = Math.round(entry.contentRect.width);
@@ -81,6 +83,8 @@ function WidgetNode(nodeProps) {
         cancelAnimationFrame(frameId);
       }
 
+      isUpdating = true;
+      observer.unobserve(element);
       frameId = requestAnimationFrame(() => {
         setEditorSize((prev) => {
           if (prev.width === nextWidth && prev.height === nextHeight) {
@@ -88,10 +92,12 @@ function WidgetNode(nodeProps) {
           }
           return { width: nextWidth, height: nextHeight };
         });
+        isUpdating = false;
+        observer.observe(element);
       });
     });
 
-    observer.observe(editorRef.current);
+    observer.observe(element);
     return () => {
       if (frameId) {
         cancelAnimationFrame(frameId);
