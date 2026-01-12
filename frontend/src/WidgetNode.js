@@ -68,22 +68,36 @@ function WidgetNode(nodeProps) {
       return;
     }
 
+    let frameId;
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) {
         return;
       }
-      const { width, height } = entry.contentRect;
-      setEditorSize((prev) => {
-        if (prev.width === width && prev.height === height) {
-          return prev;
-        }
-        return { width, height };
+      const nextWidth = Math.round(entry.contentRect.width);
+      const nextHeight = Math.round(entry.contentRect.height);
+
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+
+      frameId = requestAnimationFrame(() => {
+        setEditorSize((prev) => {
+          if (prev.width === nextWidth && prev.height === nextHeight) {
+            return prev;
+          }
+          return { width: nextWidth, height: nextHeight };
+        });
       });
     });
 
     observer.observe(editorRef.current);
-    return () => observer.disconnect();
+    return () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+      observer.disconnect();
+    };
   }, []);
 
   const resolvedContainerStyle = useMemo(() => {
