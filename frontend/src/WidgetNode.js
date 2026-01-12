@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
-import { Handle, Position, useReactFlow, useViewport } from '@xyflow/react';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import TableEditor from './TableEditor';
 
 const TABLES_API = 'http://localhost:8000/api/tables/';
@@ -57,7 +57,6 @@ function WidgetNode({ id, data }) {
   const [rowsCount, setRowsCount] = useState(10);
   const [colsCount, setColsCount] = useState(8);
   const [isCreating, setIsCreating] = useState(false);
-  const { zoom } = useViewport();
   const { setNodes } = useReactFlow();
 
   useEffect(() => {
@@ -115,7 +114,6 @@ function WidgetNode({ id, data }) {
               id={table.id}
               compactMode
               showCompactControls
-              viewportZoom={zoom}
               onTitleChange={setTableTitle}
             />
           </div>

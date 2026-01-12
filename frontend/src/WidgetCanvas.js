@@ -29,7 +29,26 @@ const codeStyle = {
   whiteSpace: 'pre-wrap'
 };
 
-const buildWidgetNode = (widgetId, index) => ({
+const allowedNodeProps = new Set([
+  'style',
+  'className',
+  'draggable',
+  'selectable',
+  'connectable',
+  'hidden',
+  'width',
+  'height',
+  'extent',
+  'parentNode',
+  'expandParent',
+  'sourcePosition',
+  'targetPosition',
+  'dragHandle',
+  'zIndex',
+  'focusable'
+]);
+
+const buildWidgetNode = (widgetId, index, extraProps = {}) => ({
   id: `widget-${widgetId}`,
   type: 'tableWidget',
   position: {
@@ -38,9 +57,19 @@ const buildWidgetNode = (widgetId, index) => ({
   },
   data: {
     title: 'Табличный виджет',
-    widgetId
-  }
+    widgetId,
+    nodeProps: extraProps
+  },
+  ...extraProps
 });
+
+const pickNodeProps = (nodeProps = {}) =>
+  Object.entries(nodeProps).reduce((acc, [key, value]) => {
+    if (allowedNodeProps.has(key)) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
 
 function WidgetCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -66,6 +95,7 @@ function WidgetCanvas() {
 
   const updateInfo = useCallback(
     (info) => {
+      const cleanedNodeProps = pickNodeProps(info?.config?.nodeProps || info?.nodeProps || {});
       setLastInfo(info);
       setNodes((current) => {
         const matchIndex = current.findIndex(
@@ -73,7 +103,7 @@ function WidgetCanvas() {
         );
 
         if (matchIndex === -1) {
-          const newNode = buildWidgetNode(info.widgetId, current.length);
+          const newNode = buildWidgetNode(info.widgetId, current.length, cleanedNodeProps);
           return [
             ...current,
             {
@@ -81,7 +111,8 @@ function WidgetCanvas() {
               data: {
                 ...newNode.data,
                 info,
-                config: info.config
+                config: info.config,
+                nodeProps: cleanedNodeProps
               }
             }
           ];
@@ -91,10 +122,12 @@ function WidgetCanvas() {
           node.data?.widgetId === info.widgetId || node.id === `widget-${info.widgetId}`
             ? {
                 ...node,
+                ...cleanedNodeProps,
                 data: {
                   ...node.data,
                   info,
-                  config: info.config
+                  config: info.config,
+                  nodeProps: cleanedNodeProps
                 }
               }
             : node
@@ -119,7 +152,13 @@ function WidgetCanvas() {
       config: {
         view: 'sheet',
         theme: 'light',
-        allowExport: true
+        allowExport: true,
+        nodeProps: {
+          style: {
+            width: 520,
+            height: 420
+          }
+        }
       },
       board: {
         id: 7,
