@@ -1,6 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Handle, Position, useViewport } from '@xyflow/react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
+import { Handle, Position, useReactFlow } from '@xyflow/react';
 import TableEditor from './TableEditor';
+
+const TABLES_API = 'http://localhost:8000/api/tables/';
 
 const containerStyle = {
   padding: '12px',
@@ -38,40 +41,66 @@ const editorContainerStyle = {
   minHeight: '220px'
 };
 
-function WidgetNode({ data }) {
+const formRowStyle = {
+  display: 'flex',
+  gap: '12px',
+  marginBottom: '10px',
+  fontSize: '13px',
+  color: '#52606d'
+};
+
+function WidgetNode({ id, data }) {
   const info = data?.info;
   const table = data?.table;
-  const editorRef = useRef(null);
-  const [editorSize, setEditorSize] = useState({ width: 0, height: 0 });
   const [tableTitle, setTableTitle] = useState(table?.title || 'Без названия');
-  const { zoom } = useViewport();
+  const [newTitle, setNewTitle] = useState('Новая таблица');
+  const [rowsCount, setRowsCount] = useState(10);
+  const [colsCount, setColsCount] = useState(8);
+  const [isCreating, setIsCreating] = useState(false);
+  const { setNodes } = useReactFlow();
 
   useEffect(() => {
     setTableTitle(table?.title || 'Без названия');
   }, [table?.title]);
 
-  useEffect(() => {
-    if (!editorRef.current) {
+  const handleCreateTable = async () => {
+    if (!newTitle.trim()) {
+      alert('Введите название таблицы');
       return;
     }
 
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) {
-        return;
-      }
-      const { width, height } = entry.contentRect;
-      setEditorSize((prev) => {
-        if (prev.width === width && prev.height === height) {
-          return prev;
-        }
-        return { width, height };
-      });
-    });
+    setIsCreating(true);
+    const emptyRows = Array.from({ length: rowsCount }, () =>
+      Array.from({ length: colsCount }, () => '')
+    );
 
-    observer.observe(editorRef.current);
-    return () => observer.disconnect();
-  }, []);
+    try {
+      const response = await axios.post(TABLES_API, {
+        title: newTitle,
+        data: { rows: emptyRows }
+      });
+
+      setNodes((current) =>
+        current.map((node) =>
+          node.id === id
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  table: response.data
+                }
+              }
+            : node
+        )
+      );
+      setTableTitle(response.data?.title || newTitle);
+    } catch (error) {
+      console.error(error);
+      alert('Ошибка создания таблицы');
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   return (
     <div style={containerStyle}>
@@ -80,27 +109,77 @@ function WidgetNode({ data }) {
       </div>
       {table ? (
         <>
-          <div style={editorContainerStyle} ref={editorRef} className="nodrag">
+          <div style={editorContainerStyle} className="nodrag">
             <TableEditor
               id={table.id}
               compactMode
               showCompactControls
-              compactHeight={editorSize.height}
-              compactWidth={editorSize.width}
-              viewportZoom={zoom}
               onTitleChange={setTableTitle}
             />
           </div>
         </>
-      ) : info ? (
-        <div style={{ fontSize: '13px', color: '#52606d', lineHeight: 1.4 }}>
-          <div><strong>ID:</strong> {info.widgetId}</div>
-          <div><strong>Роль:</strong> {info.role}</div>
-          <div><strong>Доска:</strong> {info?.board?.name || 'Не указана'}</div>
-        </div>
       ) : (
         <div style={{ fontSize: '13px', color: '#52606d', lineHeight: 1.4 }}>
-          Ожидание вызова getInfo...
+          {info ? (
+            <>
+              <div><strong>ID:</strong> {info.widgetId}</div>
+              <div><strong>Роль:</strong> {info.role}</div>
+              <div><strong>Доска:</strong> {info?.board?.name || 'Не указана'}</div>
+            </>
+          ) : (
+            <div>Ожидание вызова getInfo...</div>
+          )}
+          <div style={{ marginTop: '12px' }}>
+            <div style={formRowStyle}>
+              <label style={{ flex: 2 }}>
+                Название
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={(event) => setNewTitle(event.target.value)}
+                  style={{ width: '100%', padding: '6px', marginTop: '4px' }}
+                />
+              </label>
+            </div>
+            <div style={formRowStyle}>
+              <label style={{ flex: 1 }}>
+                Строк
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
+                  value={rowsCount}
+                  onChange={(event) => setRowsCount(parseInt(event.target.value, 10) || 1)}
+                  style={{ width: '100%', padding: '6px', marginTop: '4px' }}
+                />
+              </label>
+              <label style={{ flex: 1 }}>
+                Столбцов
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={colsCount}
+                  onChange={(event) => setColsCount(parseInt(event.target.value, 10) || 1)}
+                  style={{ width: '100%', padding: '6px', marginTop: '4px' }}
+                />
+              </label>
+            </div>
+            <button
+              onClick={handleCreateTable}
+              disabled={isCreating}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: 'none',
+                background: isCreating ? '#94a3b8' : '#2563eb',
+                color: '#fff',
+                cursor: isCreating ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isCreating ? 'Создаём...' : 'Создать таблицу'}
+            </button>
+          </div>
         </div>
       )}
       <Handle type="target" position={Position.Left} style={{ background: '#7b8794' }} />
