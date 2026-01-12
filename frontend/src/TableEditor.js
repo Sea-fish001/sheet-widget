@@ -17,9 +17,6 @@ function TableEditor({
   id,
   compactMode = false,
   showCompactControls = false,
-  compactHeight,
-  compactWidth,
-  viewportZoom,
   onTitleChange
 }) {
   const params = useParams();
@@ -470,9 +467,6 @@ function TableEditor({
     ? { flex: 1, minHeight: '240px', height: '100%' }
     : {};
 
-  const resolvedCompactHeight = compactHeight && compactHeight > 0 ? compactHeight : '100%';
-  const resolvedCompactWidth = compactWidth && compactWidth > 0 ? compactWidth : '100%';
-
   useEffect(() => {
     if (!compactMode || !hotRef.current) {
       return;
@@ -481,15 +475,8 @@ function TableEditor({
     if (!hot) {
       return;
     }
-    hot.updateSettings({
-      height: resolvedCompactHeight,
-      width: resolvedCompactWidth
-    });
-    if (typeof viewportZoom === 'number') {
-      hot.refreshDimensions();
-    }
     hot.render();
-  }, [compactMode, resolvedCompactHeight, resolvedCompactWidth, viewportZoom]);
+  }, [compactMode]);
 
   return (
     <div style={containerStyle} className="nodrag">
@@ -691,8 +678,8 @@ function TableEditor({
             data={hotData}
             rowHeaders={true}
             colHeaders={true}
-            height={compactMode ? resolvedCompactHeight : "70vh"}
-            width={compactMode ? resolvedCompactWidth : "100%"}
+            height={compactMode ? '100%' : '70vh'}
+            width="100%"
             rowHeights={48}
             colWidths={100}
             stretchH="none"
