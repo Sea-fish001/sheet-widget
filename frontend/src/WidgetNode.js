@@ -57,28 +57,11 @@ function WidgetNode({ id, data }) {
   const [rowsCount, setRowsCount] = useState(10);
   const [colsCount, setColsCount] = useState(8);
   const [isCreating, setIsCreating] = useState(false);
-  const [autoCreateDone, setAutoCreateDone] = useState(false);
   const { setNodes } = useReactFlow();
 
   useEffect(() => {
     setTableTitle(table?.title || 'Без названия');
   }, [table?.title]);
-
-  useEffect(() => {
-    if (table || isCreating || autoCreateDone) {
-      return;
-    }
-    if (data?.autoCreateTable) {
-      const initialTitle = data?.initialTableTitle || newTitle;
-      const initialRows = Number(data?.initialRows) || rowsCount;
-      const initialCols = Number(data?.initialCols) || colsCount;
-      setNewTitle(initialTitle);
-      setRowsCount(initialRows);
-      setColsCount(initialCols);
-      setAutoCreateDone(true);
-      handleCreateTable(initialTitle, initialRows, initialCols);
-    }
-  }, [data, table, isCreating, autoCreateDone, newTitle, rowsCount, colsCount]);
 
   const handleCreateTable = async (titleOverride, rowsOverride, colsOverride) => {
     const titleValue = titleOverride ?? newTitle;
