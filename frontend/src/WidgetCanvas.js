@@ -12,25 +12,6 @@ import {
 import '@xyflow/react/dist/style.css';
 import WidgetNode from './WidgetNode';
 
-const allowedNodeProps = new Set([
-  'style',
-  'className',
-  'draggable',
-  'selectable',
-  'connectable',
-  'hidden',
-  'width',
-  'height',
-  'extent',
-  'parentNode',
-  'expandParent',
-  'sourcePosition',
-  'targetPosition',
-  'dragHandle',
-  'zIndex',
-  'focusable'
-]);
-
 const panelStyle = {
   padding: '16px',
   borderRadius: '12px',
@@ -48,7 +29,7 @@ const codeStyle = {
   whiteSpace: 'pre-wrap'
 };
 
-const buildWidgetNode = (widgetId, index, extraProps = {}) => ({
+const buildWidgetNode = (widgetId, index) => ({
   id: `widget-${widgetId}`,
   type: 'tableWidget',
   position: {
@@ -57,19 +38,9 @@ const buildWidgetNode = (widgetId, index, extraProps = {}) => ({
   },
   data: {
     title: 'Табличный виджет',
-    widgetId,
-    nodeProps: extraProps
-  },
-  ...extraProps
+    widgetId
+  }
 });
-
-const pickNodeProps = (nodeProps = {}) =>
-  Object.entries(nodeProps).reduce((acc, [key, value]) => {
-    if (allowedNodeProps.has(key)) {
-      acc[key] = value;
-    }
-    return acc;
-  }, {});
 
 function WidgetCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -95,7 +66,6 @@ function WidgetCanvas() {
 
   const updateInfo = useCallback(
     (info) => {
-      const cleanedNodeProps = pickNodeProps(info?.config?.nodeProps || info?.nodeProps || {});
       setLastInfo(info);
       setNodes((current) => {
         const matchIndex = current.findIndex(
@@ -103,7 +73,7 @@ function WidgetCanvas() {
         );
 
         if (matchIndex === -1) {
-          const newNode = buildWidgetNode(info.widgetId, current.length, cleanedNodeProps);
+          const newNode = buildWidgetNode(info.widgetId, current.length);
           return [
             ...current,
             {
@@ -111,8 +81,7 @@ function WidgetCanvas() {
               data: {
                 ...newNode.data,
                 info,
-                config: info.config,
-                nodeProps: cleanedNodeProps
+                config: info.config
               }
             }
           ];
@@ -122,12 +91,10 @@ function WidgetCanvas() {
           node.data?.widgetId === info.widgetId || node.id === `widget-${info.widgetId}`
             ? {
                 ...node,
-                ...cleanedNodeProps,
                 data: {
                   ...node.data,
                   info,
-                  config: info.config,
-                  nodeProps: cleanedNodeProps
+                  config: info.config
                 }
               }
             : node
@@ -152,13 +119,7 @@ function WidgetCanvas() {
       config: {
         view: 'sheet',
         theme: 'light',
-        allowExport: true,
-        nodeProps: {
-          style: {
-            width: 520,
-            height: 420
-          }
-        }
+        allowExport: true
       },
       board: {
         id: 7,
