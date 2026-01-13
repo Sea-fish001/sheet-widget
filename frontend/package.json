@@ -28,7 +28,7 @@
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
-    "build:lib": "tsup src/index.js --format esm,cjs --dts --out-dir dist --loader .js=jsx",
+    "build:lib": "tsup src/index.js --format esm,cjs --dts --out-dir dist --loader .js=jsx --tsconfig tsconfig.json",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
