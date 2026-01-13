@@ -18,8 +18,7 @@ const containerStyle = {
   fontFamily: 'Arial, sans-serif',
   display: 'flex',
   flexDirection: 'column',
-  resize: 'both',
-  overflow: 'auto'
+  overflow: 'hidden'
 };
 
 const titleStyle = {

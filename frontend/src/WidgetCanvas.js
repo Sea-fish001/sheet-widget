@@ -48,20 +48,26 @@ const allowedNodeProps = new Set([
   'focusable'
 ]);
 
-const buildWidgetNode = (widgetId, index, extraProps = {}) => ({
-  id: `widget-${widgetId}`,
-  type: 'tableWidget',
-  position: {
-    x: 120 + (index % 2) * 420,
-    y: 120 + Math.floor(index / 2) * 320
-  },
-  data: {
-    title: 'Табличный виджет',
-    widgetId,
-    nodeProps: extraProps
-  },
-  ...extraProps
-});
+const buildWidgetNode = (widgetId, index, extraProps = {}) => {
+  const baseStyle = { width: 520, height: 420 };
+  const mergedStyle = { ...baseStyle, ...(extraProps.style || {}) };
+  const resolvedProps = { ...extraProps, style: mergedStyle };
+
+  return {
+    id: `widget-${widgetId}`,
+    type: 'tableWidget',
+    position: {
+      x: 120 + (index % 2) * 420,
+      y: 120 + Math.floor(index / 2) * 320
+    },
+    data: {
+      title: 'Табличный виджет',
+      widgetId,
+      nodeProps: resolvedProps
+    },
+    ...resolvedProps
+  };
+};
 
 const pickNodeProps = (nodeProps = {}) =>
   Object.entries(nodeProps).reduce((acc, [key, value]) => {
