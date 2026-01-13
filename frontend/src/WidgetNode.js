@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import TableEditor from './TableEditor';
 
 const TABLES_API = 'http://localhost:8000/api/tables/';
+const WIDGET_CONFIG_API = 'http://localhost:8000/api/widget/';
 
 const containerStyle = {
   padding: '12px',
@@ -51,12 +52,35 @@ const formRowStyle = {
 function WidgetNode({ id, data }) {
   const info = data?.info;
   const table = data?.table;
+  const widgetId = data?.widgetId ?? info?.widgetId;
   const [tableTitle, setTableTitle] = useState(table?.title || 'Без названия');
   const [newTitle, setNewTitle] = useState('Новая таблица');
   const [rowsCount, setRowsCount] = useState(10);
   const [colsCount, setColsCount] = useState(8);
   const [isCreating, setIsCreating] = useState(false);
   const { setNodes } = useReactFlow();
+  const lastSyncedConfig = useRef(null);
+
+  useEffect(() => {
+    if (!widgetId || !table?.id) {
+      return;
+    }
+
+    const nextConfig = { tableId: table.id };
+    const serialized = JSON.stringify(nextConfig);
+
+    if (lastSyncedConfig.current === serialized) {
+      return;
+    }
+
+    lastSyncedConfig.current = serialized;
+
+    axios
+      .put(`${WIDGET_CONFIG_API}${widgetId}`, nextConfig)
+      .catch((error) => {
+        console.error('Ошибка синхронизации конфига виджета:', error);
+      });
+  }, [table?.id, widgetId]);
 
   useEffect(() => {
     setTableTitle(table?.title || 'Без названия');
