@@ -3,8 +3,8 @@ import axios from 'axios';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import TableEditor from './TableEditor';
 
-const TABLES_API = 'http://localhost:8000/api/tables/';
-const WIDGET_CONFIG_API = 'http://localhost:8000/api/widget/';
+const TABLES_API = 'http://158.160.73.104:8000/api/tables/';
+const WIDGET_CONFIG_API = 'http://158.160.73.104:8000/api/widget/';
 
 const containerStyle = {
   padding: '12px',
