@@ -63,7 +63,7 @@ function WidgetNode({ id, data }) {
   }, [table?.title]);
 
   const handleCreateTable = async (titleOverride, rowsOverride, colsOverride) => {
-    const titleValue = titleOverride ?? newTitle;
+    const titleValue = typeof titleOverride === 'string' ? titleOverride : newTitle;
     const rowsValue = rowsOverride ?? rowsCount;
     const colsValue = colsOverride ?? colsCount;
 
@@ -170,7 +170,7 @@ function WidgetNode({ id, data }) {
               </label>
             </div>
             <button
-              onClick={handleCreateTable}
+              onClick={() => handleCreateTable()}
               disabled={isCreating}
               style={{
                 padding: '8px 12px',
