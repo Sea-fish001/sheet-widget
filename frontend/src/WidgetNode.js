@@ -61,6 +61,25 @@ function WidgetNode({ id, data }) {
   const { setNodes } = useReactFlow();
   const lastSyncedConfig = useRef(null);
 
+  const buildCreateTableErrorMessage = (error) => {
+    if (error?.response) {
+      const status = error.response.status;
+      const payload = error.response.data;
+      const detail = typeof payload === 'string'
+        ? payload
+        : payload?.detail || payload?.message;
+      return detail
+        ? `Ошибка создания таблицы (HTTP ${status}): ${detail}`
+        : `Ошибка создания таблицы (HTTP ${status})`;
+    }
+
+    if (error?.request) {
+      return 'Ошибка создания таблицы: сервер недоступен или запрос заблокирован (CORS).';
+    }
+
+    return `Ошибка создания таблицы: ${error?.message || 'неизвестная ошибка'}`;
+  };
+
   useEffect(() => {
     if (!widgetId || !table?.id) {
       return;
@@ -123,7 +142,7 @@ function WidgetNode({ id, data }) {
       setTableTitle(response.data?.title || titleValue);
     } catch (error) {
       console.error(error);
-      alert('Ошибка создания таблицы');
+      alert(buildCreateTableErrorMessage(error));
     } finally {
       setIsCreating(false);
     }
