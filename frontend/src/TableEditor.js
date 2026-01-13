@@ -11,7 +11,7 @@ import HyperFormula from 'hyperformula';
 
 registerAllModules();
 
-const API_BASE = 'http://localhost:8000/api/tables/';
+const API_BASE = 'http://158.160.73.104:8000/api/tables/';
 
 function TableEditor({
   id,

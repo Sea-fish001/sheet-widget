@@ -3,8 +3,8 @@ import axios from 'axios';
 import { Handle, Position, useReactFlow } from '@xyflow/react';
 import TableEditor from './TableEditor';
 
-const TABLES_API = 'http://localhost:8000/api/tables/';
-const WIDGET_CONFIG_API = 'http://localhost:8000/api/widget/';
+const TABLES_API = 'http://158.160.73.104:8000/api/tables/';
+const WIDGET_CONFIG_API = 'http://158.160.73.104:8000/api/widget/';
 
 const containerStyle = {
   padding: '12px',
@@ -60,6 +60,25 @@ function WidgetNode({ id, data }) {
   const [isCreating, setIsCreating] = useState(false);
   const { setNodes } = useReactFlow();
   const lastSyncedConfig = useRef(null);
+
+  const buildCreateTableErrorMessage = (error) => {
+    if (error?.response) {
+      const status = error.response.status;
+      const payload = error.response.data;
+      const detail = typeof payload === 'string'
+        ? payload
+        : payload?.detail || payload?.message;
+      return detail
+        ? `Ошибка создания таблицы (HTTP ${status}): ${detail}`
+        : `Ошибка создания таблицы (HTTP ${status})`;
+    }
+
+    if (error?.request) {
+      return 'Ошибка создания таблицы: сервер недоступен или запрос заблокирован (CORS).';
+    }
+
+    return `Ошибка создания таблицы: ${error?.message || 'неизвестная ошибка'}`;
+  };
 
   useEffect(() => {
     if (!widgetId || !table?.id) {
@@ -123,7 +142,7 @@ function WidgetNode({ id, data }) {
       setTableTitle(response.data?.title || titleValue);
     } catch (error) {
       console.error(error);
-      alert('Ошибка создания таблицы');
+      alert(buildCreateTableErrorMessage(error));
     } finally {
       setIsCreating(false);
     }
