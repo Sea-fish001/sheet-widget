@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import { Handle, Position, useReactFlow } from '@xyflow/react';
+import { Handle, Position } from '@xyflow/react';
 import TableEditor from './TableEditor';
 
 const TABLES_API = 'http://158.160.73.104:8000/api/tables/';
@@ -52,21 +52,23 @@ const formRowStyle = {
 function WidgetNode({ id, data }) {
   const info = data?.info;
   const table = data?.table;
+  const [localTable, setLocalTable] = useState(null);
   const widgetId = data?.widgetId ?? info?.widgetId;
-  const [tableTitle, setTableTitle] = useState(table?.title || 'Без названия');
+  const effectiveTable = localTable ?? table;
+  const [tableTitle, setTableTitle] = useState(effectiveTable?.title || 'Без названия');
   const [newTitle, setNewTitle] = useState('Новая таблица');
   const [rowsCount, setRowsCount] = useState(10);
   const [colsCount, setColsCount] = useState(8);
   const [isCreating, setIsCreating] = useState(false);
-  const { setNodes } = useReactFlow();
+  const externalSetNodes = typeof data?.setNodes === 'function' ? data.setNodes : null;
   const lastSyncedConfig = useRef(null);
 
   useEffect(() => {
-    if (!widgetId || !table?.id) {
+    if (!widgetId || !effectiveTable?.id) {
       return;
     }
 
-    const nextConfig = { tableId: table.id };
+    const nextConfig = { tableId: effectiveTable.id };
     const serialized = JSON.stringify(nextConfig);
 
     if (lastSyncedConfig.current === serialized) {
@@ -80,11 +82,11 @@ function WidgetNode({ id, data }) {
       .catch((error) => {
         console.error('Ошибка синхронизации конфига виджета:', error);
       });
-  }, [table?.id, widgetId]);
+  }, [effectiveTable?.id, widgetId]);
 
   useEffect(() => {
-    setTableTitle(table?.title || 'Без названия');
-  }, [table?.title]);
+    setTableTitle(effectiveTable?.title || 'Без названия');
+  }, [effectiveTable?.title]);
 
   const handleCreateTable = async (titleOverride, rowsOverride, colsOverride) => {
     const titleValue = typeof titleOverride === 'string' ? titleOverride : newTitle;
@@ -107,19 +109,23 @@ function WidgetNode({ id, data }) {
         data: { rows: emptyRows }
       });
 
-      setNodes((current) =>
-        current.map((node) =>
-          node.id === id
-            ? {
-                ...node,
-                data: {
-                  ...node.data,
-                  table: response.data
+      if (externalSetNodes) {
+        externalSetNodes((current) =>
+          current.map((node) =>
+            node.id === id
+              ? {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    table: response.data
+                  }
                 }
-              }
-            : node
-        )
-      );
+              : node
+          )
+        );
+      } else {
+        setLocalTable(response.data);
+      }
       setTableTitle(response.data?.title || titleValue);
     } catch (error) {
       console.error(error);
@@ -133,13 +139,13 @@ function WidgetNode({ id, data }) {
   return (
     <div style={containerStyle}>
       <div style={titleStyle} className="node-drag-handle">
-        {table ? tableTitle : data?.title || 'Новый виджет'}
+        {effectiveTable ? tableTitle : data?.title || 'Новый виджет'}
       </div>
-      {table ? (
+      {effectiveTable ? (
         <>
           <div style={editorContainerStyle} className="nodrag">
             <TableEditor
-              id={table.id}
+              id={effectiveTable.id}
               compactMode
               showCompactControls
               onTitleChange={setTableTitle}
