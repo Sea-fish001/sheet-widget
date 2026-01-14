@@ -1,3 +1,3 @@
 import 'handsontable/dist/handsontable.full.min.css';
 
-export { default as WidgetNode } from './WidgetNode';
+export { WidgetNodeSafe as WidgetNode, WidgetNodeErrorBoundary, WidgetNodeSafe, WidgetNodeUnsafe } from './WidgetNodeSafe';
