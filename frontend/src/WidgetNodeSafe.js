@@ -1,5 +1,5 @@
 import React from 'react';
-import WidgetNode from './WidgetNode';
+import WidgetNode, { WidgetNodeFallback } from './WidgetNode';
 
 class WidgetNodeErrorBoundary extends React.Component {
   constructor(props) {
@@ -39,7 +39,10 @@ class WidgetNodeErrorBoundary extends React.Component {
 }
 
 const WidgetNodeSafe = ({ fallback, onError, ...props }) => (
-  <WidgetNodeErrorBoundary fallback={fallback} onError={onError}>
+  <WidgetNodeErrorBoundary
+    fallback={fallback ?? <WidgetNodeFallback {...props} />}
+    onError={onError}
+  >
     <WidgetNode {...props} />
   </WidgetNodeErrorBoundary>
 );
