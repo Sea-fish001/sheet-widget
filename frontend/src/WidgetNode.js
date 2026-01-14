@@ -49,7 +49,7 @@ const formRowStyle = {
   color: '#52606d'
 };
 
-function WidgetNode({ id, data }) {
+function WidgetNodeContent({ id, data, setNodes, showHandles }) {
   const info = data?.info;
   const table = data?.table;
   const [localTable, setLocalTable] = useState(null);
@@ -60,16 +60,6 @@ function WidgetNode({ id, data }) {
   const [rowsCount, setRowsCount] = useState(10);
   const [colsCount, setColsCount] = useState(8);
   const [isCreating, setIsCreating] = useState(false);
-  const externalSetNodes = typeof data?.setNodes === 'function' ? data.setNodes : null;
-  let reactFlowInstance = null;
-  try {
-    reactFlowInstance = useReactFlow();
-  } catch (error) {
-    reactFlowInstance = null;
-  }
-  const flowSetNodes = reactFlowInstance?.setNodes ?? null;
-  const setNodes = flowSetNodes ?? externalSetNodes;
-  const hasReactFlow = Boolean(reactFlowInstance);
   const lastSyncedConfig = useRef(null);
 
   useEffect(() => {
@@ -225,7 +215,7 @@ function WidgetNode({ id, data }) {
           </div>
         </div>
       )}
-      {hasReactFlow && (
+      {showHandles && (
         <>
           <Handle type="target" position={Position.Left} style={{ background: '#7b8794' }} />
           <Handle type="source" position={Position.Right} style={{ background: '#7b8794' }} />
@@ -235,4 +225,27 @@ function WidgetNode({ id, data }) {
   );
 }
 
+function WidgetNode({ id, data }) {
+  const reactFlowInstance = useReactFlow();
+  const flowSetNodes = reactFlowInstance?.setNodes ?? null;
+  const externalSetNodes = typeof data?.setNodes === 'function' ? data.setNodes : null;
+  const setNodes = flowSetNodes ?? externalSetNodes;
+
+  return <WidgetNodeContent id={id} data={data} setNodes={setNodes} showHandles />;
+}
+
+function WidgetNodeFallback({ id, data }) {
+  const externalSetNodes = typeof data?.setNodes === 'function' ? data.setNodes : null;
+
+  return (
+    <WidgetNodeContent
+      id={id}
+      data={data}
+      setNodes={externalSetNodes}
+      showHandles={false}
+    />
+  );
+}
+
+export { WidgetNodeContent, WidgetNodeFallback };
 export default WidgetNode;
