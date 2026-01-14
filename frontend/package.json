@@ -1,27 +1,36 @@
 {
-  "name": "frontend",
-  "version": "0.1.0",
-  "private": true,
+  "name": "sheet-widget",
+  "version": "0.1.1",
+  "private": false,
+  "files": ["dist"],
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
   "dependencies": {
     "@handsontable/react": "^16.2.0",
-    "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@xyflow/react": "^12.4.4",
     "axios": "^1.13.2",
     "handsontable": "^16.2.0",
     "papaparse": "^5.5.3",
-    "react": "^19.2.1",
-    "react-dom": "^19.2.1",
-    "react-router-dom": "^7.10.1",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4",
     "xlsx-js-style": "^1.2.0"
   },
+  "peerDependencies": {
+    "@xyflow/react": "^12.4.4",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^13.5.0",
+    "tsup": "^8.5.1"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "build:lib": "tsup src/index.js --format esm,cjs --dts --out-dir dist --loader .js=jsx --tsconfig tsconfig.json",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
