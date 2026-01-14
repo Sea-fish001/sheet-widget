@@ -38,10 +38,12 @@ class WidgetNodeErrorBoundary extends React.Component {
   }
 }
 
-const WidgetNodeSafe = (props) => (
-  <WidgetNodeErrorBoundary>
+const WidgetNodeSafe = ({ fallback, onError, ...props }) => (
+  <WidgetNodeErrorBoundary fallback={fallback} onError={onError}>
     <WidgetNode {...props} />
   </WidgetNodeErrorBoundary>
 );
 
-export { WidgetNodeErrorBoundary, WidgetNodeSafe };
+const WidgetNodeUnsafe = WidgetNode;
+
+export { WidgetNodeErrorBoundary, WidgetNodeSafe, WidgetNodeUnsafe };
